@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/e2ee-core",
+  "crates/e2ee-directory",
   "crates/e2ee-enrollment",
   "crates/e2ee-keystore",
 ]
