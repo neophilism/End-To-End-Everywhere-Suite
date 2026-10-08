@@ -168,6 +168,62 @@ pub fn generate_recipient_keypair() -> RecipientKeyPair {
     }
 }
 
+/// Wrap arbitrary endpoint content-key material to one recipient using the
+/// exact E2EESA HPKE suite. The caller supplies a domain-separated HPKE info
+/// string and authenticated context appropriate to its application profile.
+pub fn wrap_key_for_recipient(
+    recipient: &RecipientPublicKey,
+    key_material: &[u8],
+    hpke_info: &[u8],
+    aad: &[u8],
+) -> Result<RecipientStanza, MessageError> {
+    validate_recipient_hint(&recipient.recipient_hint)?;
+    let recipient_public = <Kem as KemTrait>::PublicKey::from_bytes(&recipient.encoded_public_key)
+        .map_err(|_| MessageError::InvalidPublicKey)?;
+    let (encapped_key, wrapped_content_key) = single_shot_seal::<HpkeAead, HpkeKdf, Kem>(
+        &OpModeS::Base,
+        &recipient_public,
+        hpke_info,
+        key_material,
+        aad,
+    )
+    .map_err(|_| MessageError::HpkeSeal)?;
+
+    Ok(RecipientStanza {
+        recipient_hint: recipient.recipient_hint.clone(),
+        encapsulated_key: encapped_key.to_bytes().as_slice().to_vec(),
+        wrapped_content_key,
+    })
+}
+
+/// Unwrap endpoint content-key material from one recipient stanza.
+pub fn unwrap_key_for_recipient(
+    expected_recipient_hint: &[u8],
+    recipient_private_key: &RecipientPrivateKey,
+    stanza: &RecipientStanza,
+    hpke_info: &[u8],
+    aad: &[u8],
+) -> Result<Vec<u8>, MessageError> {
+    validate_recipient_hint(expected_recipient_hint)?;
+    if stanza.recipient_hint != expected_recipient_hint {
+        return Err(MessageError::RecipientHintMismatch);
+    }
+
+    let private_key = recipient_private_key.parse()?;
+    let encapped_key = <Kem as KemTrait>::EncappedKey::from_bytes(&stanza.encapsulated_key)
+        .map_err(|_| MessageError::HpkeOpen)?;
+
+    single_shot_open::<HpkeAead, HpkeKdf, Kem>(
+        &OpModeR::Base,
+        &private_key,
+        &encapped_key,
+        hpke_info,
+        &stanza.wrapped_content_key,
+        aad,
+    )
+    .map_err(|_| MessageError::HpkeOpen)
+}
+
 pub fn encrypt_text(
     recipient: &RecipientPublicKey,
     text: &str,
@@ -178,9 +234,6 @@ pub fn encrypt_text(
         return Err(MessageError::TextTooLarge);
     }
     validate_recipient_hint(&recipient.recipient_hint)?;
-
-    let recipient_public = <Kem as KemTrait>::PublicKey::from_bytes(&recipient.encoded_public_key)
-        .map_err(|_| MessageError::InvalidPublicKey)?;
 
     let content_type = content_type.unwrap_or(DEFAULT_CONTENT_TYPE);
     validate_content_type(content_type)?;
@@ -216,24 +269,13 @@ pub fn encrypt_text(
     let payload_ciphertext = seal_content(&content_key, &payload_nonce, text_bytes, &payload_aad)?;
 
     let wrap_aad = domain_aad(&base_aad, b"content-key-wrap", None);
-    let (encapped_key, wrapped_content_key) = single_shot_seal::<HpkeAead, HpkeKdf, Kem>(
-        &OpModeS::Base,
-        &recipient_public,
-        HPKE_INFO,
-        &content_key,
-        &wrap_aad,
-    )
-    .map_err(|_| MessageError::HpkeSeal)?;
+    let stanza = wrap_key_for_recipient(recipient, &content_key, HPKE_INFO, &wrap_aad)?;
 
     content_key.fill(0);
 
     let capsule = Capsule {
         suite_id: E2EESA_MESSAGE_SUITE.to_owned(),
-        recipients: vec![RecipientStanza {
-            recipient_hint: recipient.recipient_hint.clone(),
-            encapsulated_key: encapped_key.to_bytes().as_slice().to_vec(),
-            wrapped_content_key,
-        }],
+        recipients: vec![stanza],
         protected_header_ciphertext: prefix_nonce(header_nonce, protected_header_ciphertext),
         payload_ciphertext: prefix_nonce(payload_nonce, payload_ciphertext),
     };
@@ -266,21 +308,15 @@ pub fn decrypt_text(
         return Err(MessageError::RecipientHintMismatch);
     }
 
-    let private_key = recipient_private_key.parse()?;
-    let encapped_key = <Kem as KemTrait>::EncappedKey::from_bytes(&stanza.encapsulated_key)
-        .map_err(|_| MessageError::HpkeOpen)?;
-
     let base_aad = base_context(expected_recipient_hint);
     let wrap_aad = domain_aad(&base_aad, b"content-key-wrap", None);
-    let mut content_key = single_shot_open::<HpkeAead, HpkeKdf, Kem>(
-        &OpModeR::Base,
-        &private_key,
-        &encapped_key,
+    let mut content_key = unwrap_key_for_recipient(
+        expected_recipient_hint,
+        recipient_private_key,
+        stanza,
         HPKE_INFO,
-        &stanza.wrapped_content_key,
         &wrap_aad,
-    )
-    .map_err(|_| MessageError::HpkeOpen)?;
+    )?;
 
     if content_key.len() != CONTENT_KEY_LEN {
         content_key.fill(0);
