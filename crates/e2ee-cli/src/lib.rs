@@ -423,7 +423,11 @@ fn recipients_from_file(path: &Path) -> Result<Vec<EndpointId>, CliError> {
     let mut ids = Vec::new();
     for record in contents.split_terminator('\n') {
         let id = record.strip_suffix('\r').unwrap_or(record);
-        if id.is_empty() || id.bytes().any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control()) {
+        if id.is_empty()
+            || id
+                .bytes()
+                .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control())
+        {
             return Err(CliError::InvalidInput);
         }
         ids.push(endpoint(id)?);
