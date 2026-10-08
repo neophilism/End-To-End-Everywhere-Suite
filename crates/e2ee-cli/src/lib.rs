@@ -432,7 +432,10 @@ fn run(
                 .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
             check_interrupted()?;
             write_new_private(&destination, &encoded)?;
-            writeln!(output, "Signed encrypted delivery saved to a new private file.")?;
+            writeln!(
+                output,
+                "Signed encrypted delivery saved to a new private file."
+            )?;
             false
         }
         Command::OpenText(sender, context, source, destination) => {
@@ -442,13 +445,8 @@ fn run(
             let delivery = Delivery::decode(&encoded, CapsuleLimits::default())
                 .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
             let (session, contacts) = client.session_and_contacts(now())?;
-            let opened = session.open_text_from_contact(
-                contacts,
-                &sender,
-                &context,
-                &delivery,
-                now(),
-            )?;
+            let opened =
+                session.open_text_from_contact(contacts, &sender, &context, &delivery, now())?;
             check_interrupted()?;
             write_new_private(&destination, opened.text().as_bytes())?;
             writeln!(output, "Verified text saved to a new private file.")?;
