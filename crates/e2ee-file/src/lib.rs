@@ -100,7 +100,9 @@ impl fmt::Display for FileError {
             Self::InvalidMediaType => "media type is invalid",
             Self::InvalidChunkSize => "chunk size must be between 64 KiB and 8 MiB",
             Self::TooManyChunks => "attachment has too many chunks",
-            Self::FileTooLargeForInlineCapsule => "file exceeds the inline Capsule implementation limit",
+            Self::FileTooLargeForInlineCapsule => {
+                "file exceeds the inline Capsule implementation limit"
+            }
             Self::EncryptFailed => "attachment encryption failed",
             Self::AuthenticationFailed => "attachment authentication failed",
             Self::InvalidManifest => "private attachment manifest is invalid",
@@ -187,13 +189,8 @@ pub fn encrypt_file(
 
     let payload_ciphertext = encrypt_chunks(&attachment_key, &manifest, plaintext)?;
     let wrap_aad = domain_aad(&base_context, b"attachment-key-wrap");
-    let stanza = wrap_key_for_recipient(
-        recipient,
-        &attachment_key,
-        HPKE_INFO,
-        &wrap_aad,
-    )
-    .map_err(|error| FileError::Recipient(error.to_string()))?;
+    let stanza = wrap_key_for_recipient(recipient, &attachment_key, HPKE_INFO, &wrap_aad)
+        .map_err(|error| FileError::Recipient(error.to_string()))?;
     attachment_key.fill(0);
 
     let capsule = Capsule {
@@ -301,18 +298,15 @@ fn encrypt_chunks(
         let nonce = chunk_nonce(manifest.nonce_prefix, index)?;
         let aad = chunk_aad(manifest, index, chunk.len());
         let encrypted = seal(key, &nonce, chunk, &aad)?;
-        let encrypted_len = u32::try_from(encrypted.len()).map_err(|_| FileError::InvalidPayload)?;
+        let encrypted_len =
+            u32::try_from(encrypted.len()).map_err(|_| FileError::InvalidPayload)?;
         output.extend_from_slice(&encrypted_len.to_be_bytes());
         output.extend_from_slice(&encrypted);
     }
     Ok(output)
 }
 
-fn decrypt_chunks(
-    key: &[u8],
-    manifest: &Manifest,
-    payload: &[u8],
-) -> Result<Vec<u8>, FileError> {
+fn decrypt_chunks(key: &[u8], manifest: &Manifest, payload: &[u8]) -> Result<Vec<u8>, FileError> {
     let mut cursor = ByteCursor::new(payload);
     if cursor.take(4)? != PAYLOAD_MAGIC {
         return Err(FileError::InvalidPayload);
@@ -320,8 +314,7 @@ fn decrypt_chunks(
     if cursor.u16()? != PAYLOAD_VERSION {
         return Err(FileError::InvalidPayload);
     }
-    let encoded_count =
-        usize::try_from(cursor.u64()?).map_err(|_| FileError::InvalidPayload)?;
+    let encoded_count = usize::try_from(cursor.u64()?).map_err(|_| FileError::InvalidPayload)?;
     if encoded_count != manifest.chunk_count {
         return Err(FileError::ChunkCountMismatch);
     }
@@ -544,10 +537,7 @@ fn bounded_string(
     Ok(value.to_owned())
 }
 
-fn usize_field(
-    object: &serde_json::Map<String, Value>,
-    name: &str,
-) -> Result<usize, FileError> {
+fn usize_field(object: &serde_json::Map<String, Value>, name: &str) -> Result<usize, FileError> {
     let value = object
         .get(name)
         .and_then(Value::as_u64)
@@ -600,30 +590,32 @@ fn put_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(bytes);
 }
 
-fn seal(
-    key: &[u8],
-    nonce: &[u8; 12],
-    plaintext: &[u8],
-    aad: &[u8],
-) -> Result<Vec<u8>, FileError> {
+fn seal(key: &[u8], nonce: &[u8; 12], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, FileError> {
     let cipher = ChaCha20Poly1305::new_from_slice(key).map_err(|_| FileError::EncryptFailed)?;
     let nonce = Nonce::try_from(&nonce[..]).map_err(|_| FileError::EncryptFailed)?;
     cipher
-        .encrypt(&nonce, Payload { msg: plaintext, aad })
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .map_err(|_| FileError::EncryptFailed)
 }
 
-fn open(
-    key: &[u8],
-    nonce: &[u8; 12],
-    ciphertext: &[u8],
-    aad: &[u8],
-) -> Result<Vec<u8>, FileError> {
+fn open(key: &[u8], nonce: &[u8; 12], ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>, FileError> {
     let cipher =
         ChaCha20Poly1305::new_from_slice(key).map_err(|_| FileError::AuthenticationFailed)?;
     let nonce = Nonce::try_from(&nonce[..]).map_err(|_| FileError::AuthenticationFailed)?;
     cipher
-        .decrypt(&nonce, Payload { msg: ciphertext, aad })
+        .decrypt(
+            &nonce,
+            Payload {
+                msg: ciphertext,
+                aad,
+            },
+        )
         .map_err(|_| FileError::AuthenticationFailed)
 }
 
@@ -692,7 +684,10 @@ impl<'a> ByteCursor<'a> {
     }
 
     fn take(&mut self, len: usize) -> Result<&'a [u8], FileError> {
-        let end = self.offset.checked_add(len).ok_or(FileError::InvalidPayload)?;
+        let end = self
+            .offset
+            .checked_add(len)
+            .ok_or(FileError::InvalidPayload)?;
         if end > self.input.len() {
             return Err(FileError::InvalidPayload);
         }
