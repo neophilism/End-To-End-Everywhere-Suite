@@ -6,9 +6,10 @@ use e2ee_capsule::CapsuleLimits;
 use e2ee_client::{
     archive::{ArchiveAnchor, ArchiveError, LocalClient, RestorePolicy},
     contacts::ContactStatus,
-    ClientError, EndpointCard, SessionPolicy, SignatureMode,
+    ClientError, EndpointCard, SenderPolicy, SessionPolicy, SignatureMode,
 };
 use e2ee_core::{EndpointId, ProfileId};
+use e2ee_file::FileOptions;
 use e2ee_keystore::{
     software::{KdfBudget, VaultKdf},
     SOFTWARE_VAULT_PROFILE,
@@ -28,7 +29,8 @@ use zeroize::Zeroizing;
 
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
-const MAX_DELIVERY_BYTES: usize = 8 * 1024 * 1024;
+const MAX_DELIVERY_BYTES: usize = 40 * 1024 * 1024;
+const MAX_FILE_BYTES: usize = 32 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
 Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] COMMAND\n\n\
@@ -43,7 +45,9 @@ Commands:\n\
   reactivate ENDPOINT FINGERPRINT Explicitly reactivate and verify a contact\n\
   passwd                        Change the local unlock passphrase\n\
   seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
-  open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\n\
+  open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\
+  seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
+  open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\n\
 Passphrases are prompted without terminal echo. --password-stdin explicitly reads\n\
 one line (old/new lines for passwd) from a non-terminal stream ending at EOF.\n\
 No passphrases are accepted as arguments or environment variables.\n\
@@ -67,6 +71,8 @@ enum Command {
     Passwd,
     SealText(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenText(EndpointId, String, PathBuf, PathBuf),
+    SealFile(Vec<EndpointId>, String, PathBuf, PathBuf),
+    OpenFile(EndpointId, String, PathBuf, PathBuf),
 }
 
 struct Options {
@@ -262,6 +268,18 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["seal-file", ids, context, input, output] => Command::SealFile(
+            recipients(ids)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
+        ["open-file", sender, context, input, output] => Command::OpenFile(
+            endpoint(sender)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         _ => return Err(CliError::Usage),
     };
     Ok(Options {
@@ -450,6 +468,53 @@ fn run(
             check_interrupted()?;
             write_new_private(&destination, opened.text().as_bytes())?;
             writeln!(output, "Verified text saved to a new private file.")?;
+            false
+        }
+        Command::SealFile(ids, context, source, destination) => {
+            let payload = read_bounded_file(&source, MAX_FILE_BYTES)?;
+            let filename = source
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or(CliError::InvalidInput)?;
+            let options = FileOptions::new(filename, "application/octet-stream");
+            let (session, contacts) = client.session_and_contacts(now())?;
+            let delivery = session.encrypt_file_to_contacts(
+                contacts,
+                &ids,
+                &options,
+                &payload,
+                SignatureMode::Signed { context: &context },
+                now(),
+            )?;
+            let encoded = delivery
+                .encode(CapsuleLimits::default())
+                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            check_interrupted()?;
+            write_new_private(&destination, &encoded)?;
+            writeln!(output, "Signed encrypted file saved to a private delivery.")?;
+            false
+        }
+        Command::OpenFile(sender, context, source, destination) => {
+            let encoded = read_bounded_file(&source, MAX_DELIVERY_BYTES)?;
+            let delivery = Delivery::decode(&encoded, CapsuleLimits::default())
+                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let (session, contacts) = client.session_and_contacts(now())?;
+            let pinned = contacts
+                .verified_contact(&sender)
+                .map_err(ClientError::from)?;
+            let opened = session.open_file(
+                &delivery,
+                SenderPolicy::RequireSignature {
+                    sender: &pinned,
+                    context: &context,
+                },
+                now(),
+            )?;
+            // Never use the sender's embedded filename as a destination path.
+            // The user selects an explicit new local output path.
+            check_interrupted()?;
+            write_new_private(&destination, opened.bytes())?;
+            writeln!(output, "Verified attachment saved to a new private file.")?;
             false
         }
         Command::Init(_) => return Err(CliError::Usage),
