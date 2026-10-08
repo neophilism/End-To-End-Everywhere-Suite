@@ -33,3 +33,5 @@ bound to their endpoint, algorithm and expected public key.
 The [shared client session](docs/client-sessions.md) now composes verified
 contacts, sender-checked text delivery, encrypted key persistence and auto-lock.
 The same controller supports [files and portable contact/state records](docs/client-files-and-portability.md).
+An [encrypted contact book](docs/contact-lifecycle.md) now blocks unverified,
+changed and revoked contacts and requires explicit fingerprint re-verification.
