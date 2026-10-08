@@ -33,10 +33,11 @@ impl Drop for TestDirectory {
 
 fn invoke(state: &Path, format: Option<&str>, command: &[&str]) -> Output {
     let mut program = Command::new(env!("CARGO_BIN_EXE_e2ee"));
-    program
-        .arg("--state")
-        .arg(state)
-        .args(["--software-vault", "--password-only", "--password-stdin"]);
+    program.arg("--state").arg(state).args([
+        "--software-vault",
+        "--password-only",
+        "--password-stdin",
+    ]);
     if let Some(flag) = format {
         program.arg(flag);
     }
@@ -101,7 +102,10 @@ fn bounded_local_uri_text_and_binary_file_roundtrip() {
     assert!(encoded.starts_with("e2ed:v1:"));
     assert!(encoded.len() <= 8192);
     assert!(!encoded.contains(plaintext));
-    assert_eq!(fs::metadata(&uri).unwrap().permissions().mode() & 0o777, 0o600);
+    assert_eq!(
+        fs::metadata(&uri).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
 
     let wrong = invoke(
         &bob,
