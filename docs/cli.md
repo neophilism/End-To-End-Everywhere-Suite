@@ -75,3 +75,23 @@ compromise, message replay prevention, or network delivery. The output directory
 should be private and trusted.
 
 See `e2ee --help` for commands. File-attachment CLI follows this milestone.
+
+## Signed attachments
+
+Once both peers have independently verified the other's full contact fingerprint,
+run:
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only seal-file bob file-share-v1 ./report.pdf ./report.e2ed
+e2ee --state ./bob-private --software-vault --password-only open-file alice file-share-v1 ./report.e2ed ./received.pdf
+```
+
+The local CLI supports inline attachments up to 32 MiB, and signs encrypted
+multi-recipient Capsules. The sender-provided filename is authenticated inside
+the encrypted payload but is **never** interpreted as an output path. The user
+must explicitly select an output path that does not exist. The output is written
+privately (0600 on Unix); contents are not automatically opened or executed.
+Changed, unverified, or revoked sender/recipient contacts fail closed.
+This is not a streaming API for larger files. The source filename, explicit
+output paths, filesystem snapshots, and file lengths may remain visible to local
+systems. E2EE does not protect plaintext files at rest outside the vault.
