@@ -1,0 +1,9 @@
+[package]
+name = "e2ee-capsule"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Universal encrypted-envelope wire format for End-To-End Everywhere Suite"
+
+[lints]
+workspace = true
