@@ -6,7 +6,7 @@ use e2ee_capsule::CapsuleLimits;
 use e2ee_client::{
     archive::{ArchiveAnchor, ArchiveError, LocalClient, RestorePolicy},
     contacts::ContactStatus,
-    ClientError, EndpointCard, SenderPolicy, SessionPolicy, SignatureMode,
+    ClientError, EndpointCard, SenderPolicy, SessionPolicy, SignatureMode, VerifiedContact,
 };
 use e2ee_core::{EndpointId, ProfileId};
 use e2ee_file::FileOptions;
@@ -50,7 +50,9 @@ Commands:\n\
   seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
   open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\
   seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
-  open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\n\
+  open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\
+  seal-note CONTEXT INPUT OUTPUT  Encrypt/sign a personal note to this identity\n\
+  open-note CONTEXT INPUT OUTPUT  Open a signed personal note from this identity\n\n\
 Passphrases are prompted without terminal echo. --password-stdin explicitly reads\n\
 one line (old/new lines for passwd) from a non-terminal stream ending at EOF.\n\
 No passphrases are accepted as arguments or environment variables.\n\
@@ -80,6 +82,8 @@ enum Command {
     OpenText(EndpointId, String, PathBuf, PathBuf),
     SealFile(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenFile(EndpointId, String, PathBuf, PathBuf),
+    SealNote(String, PathBuf, PathBuf),
+    OpenNote(String, PathBuf, PathBuf),
 }
 
 #[derive(Clone, Copy)]
@@ -299,6 +303,16 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["seal-note", context, input, output] => Command::SealNote(
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
+        ["open-note", context, input, output] => Command::OpenNote(
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         _ => return Err(CliError::Usage),
     };
     if armor || uri {
@@ -306,7 +320,9 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             Command::SealText(..)
             | Command::OpenText(..)
             | Command::SealFile(..)
-            | Command::OpenFile(..) => {}
+            | Command::OpenFile(..)
+            | Command::SealNote(..)
+            | Command::OpenNote(..) => {}
             _ => return Err(CliError::Usage),
         }
     }
@@ -542,6 +558,50 @@ fn run(
             check_interrupted()?;
             write_new_private(&destination, opened.bytes())?;
             writeln!(output, "Verified attachment saved to a new private file.")?;
+            false
+        }
+        Command::SealNote(context, source, destination) => {
+            let plaintext = read_bounded_file(&source, MAX_TEXT_BYTES)?;
+            let text = std::str::from_utf8(&plaintext).map_err(|_| CliError::InvalidText)?;
+            let self_card = client.card().clone();
+            let pinned = VerifiedContact::confirm(
+                self_card.clone(),
+                self_card.fingerprint(),
+            )?;
+            let (session, _) = client.session_and_contacts(now())?;
+            let delivery = session.encrypt_text(
+                &[pinned],
+                text,
+                SignatureMode::Signed { context: &context },
+                now(),
+            )?;
+            let encoded = encode_delivery(&delivery, options.delivery_format)?;
+            check_interrupted()?;
+            write_new_private(&destination, &encoded)?;
+            writeln!(output, "Encrypted personal note saved to a new private file.")?;
+            false
+        }
+        Command::OpenNote(context, source, destination) => {
+            let delivery = decode_delivery(&source, options.delivery_format)?;
+            // The local archive's authenticated endpoint card supplies the
+            // pinned self-signature key. It never trusts one from the delivery.
+            let self_card = client.card().clone();
+            let pinned = VerifiedContact::confirm(
+                self_card.clone(),
+                self_card.fingerprint(),
+            )?;
+            let (session, _) = client.session_and_contacts(now())?;
+            let opened = session.open_text(
+                &delivery,
+                SenderPolicy::RequireSignature {
+                    sender: &pinned,
+                    context: &context,
+                },
+                now(),
+            )?;
+            check_interrupted()?;
+            write_new_private(&destination, opened.text().as_bytes())?;
+            writeln!(output, "Verified personal note saved to a new private file.")?;
             false
         }
         Command::Init(_) => return Err(CliError::Usage),
