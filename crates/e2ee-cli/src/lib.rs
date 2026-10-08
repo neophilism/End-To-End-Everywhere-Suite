@@ -559,7 +559,9 @@ fn run(
                 None
             };
             let (session, contacts) = client.session_and_contacts(now())?;
-            let mut recipients = contacts.resolve_recipients(&ids).map_err(ClientError::from)?;
+            let mut recipients = contacts
+                .resolve_recipients(&ids)
+                .map_err(ClientError::from)?;
             if let Some(myself) = self_recipient {
                 recipients.push(myself);
             }
@@ -608,7 +610,9 @@ fn run(
                 None
             };
             let (session, contacts) = client.session_and_contacts(now())?;
-            let mut recipients = contacts.resolve_recipients(&ids).map_err(ClientError::from)?;
+            let mut recipients = contacts
+                .resolve_recipients(&ids)
+                .map_err(ClientError::from)?;
             if let Some(myself) = self_recipient {
                 recipients.push(myself);
             }
