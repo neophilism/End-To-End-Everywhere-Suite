@@ -237,6 +237,7 @@ dependencies = [
  "e2ee-keystore",
  "e2ee-message",
  "e2ee-provenance",
+ "e2ee-storage",
  "e2ee-transport",
  "sha2",
  "zeroize",

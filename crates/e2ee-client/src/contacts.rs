@@ -109,6 +109,14 @@ impl fmt::Debug for ContactBook {
 }
 
 impl ContactBook {
+    /// Current cards and lifecycle states, in canonical endpoint order. This
+    /// view grants no trust and exposes no stored verification fingerprints.
+    pub fn contacts(&self) -> impl Iterator<Item = (&EndpointCard, ContactStatus)> {
+        self.entries
+            .values()
+            .map(|entry| (&entry.card, entry.status()))
+    }
+
     /// Observing a card never grants or restores trust. Once a verified contact
     /// changes, even a later replay of its old card still requires re-verification.
     pub fn observe(&mut self, card: EndpointCard) -> Result<ContactStatus, ContactError> {

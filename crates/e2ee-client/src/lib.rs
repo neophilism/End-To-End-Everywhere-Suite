@@ -18,6 +18,7 @@ use sha2::{Digest, Sha256};
 use std::fmt;
 use zeroize::Zeroizing;
 
+pub mod archive;
 pub mod contacts;
 pub mod files;
 pub mod portable;
