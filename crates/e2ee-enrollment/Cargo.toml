@@ -1,0 +1,13 @@
+[package]
+name = "e2ee-enrollment"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Device enrollment, pairing, and verification state machine for End-To-End Everywhere Suite"
+
+[dependencies]
+e2ee-core = { path = "../e2ee-core" }
+e2ee-keystore = { path = "../e2ee-keystore" }
+
+[lints]
+workspace = true
