@@ -500,12 +500,12 @@ fn run(
                 .file_name()
                 .and_then(|name| name.to_str())
                 .ok_or(CliError::InvalidInput)?;
-            let options = FileOptions::new(filename, "application/octet-stream");
+            let file_options = FileOptions::new(filename, "application/octet-stream");
             let (session, contacts) = client.session_and_contacts(now())?;
             let delivery = session.encrypt_file_to_contacts(
                 contacts,
                 &ids,
-                &options,
+                &file_options,
                 &payload,
                 SignatureMode::Signed { context: &context },
                 now(),
