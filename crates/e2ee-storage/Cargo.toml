@@ -1,0 +1,15 @@
+[package]
+name = "e2ee-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version = "1.89"
+description = "Private, bounded and durable local ciphertext-file storage"
+
+[target.'cfg(unix)'.dependencies]
+getrandom = "=0.4.3"
+libc = "=0.2.190"
+sha2 = "=0.11.0"
+
+[lints]
+workspace = true
