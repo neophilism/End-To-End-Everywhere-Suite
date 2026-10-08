@@ -275,10 +275,12 @@ name = "e2ee-cli"
 version = "0.1.0"
 dependencies = [
  "ctrlc",
+ "e2ee-capsule",
  "e2ee-client",
  "e2ee-core",
  "e2ee-keystore",
  "e2ee-storage",
+ "e2ee-transport",
  "rpassword",
  "zeroize",
 ]
