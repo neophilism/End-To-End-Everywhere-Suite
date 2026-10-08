@@ -12,9 +12,7 @@ use chacha20poly1305::{
 };
 use e2ee_capsule::{Capsule, CapsuleLimits, RecipientStanza};
 use hpke::{
-    aead::ChaCha20Poly1305 as HpkeChaCha20Poly1305,
-    kdf::HkdfSha256,
-    kem::X25519HkdfSha256,
+    aead::ChaCha20Poly1305 as HpkeChaCha20Poly1305, kdf::HkdfSha256, kem::X25519HkdfSha256,
     single_shot_open, single_shot_seal, Deserializable, Kem as KemTrait, OpModeR, OpModeS,
     Serializable,
 };
@@ -24,8 +22,7 @@ type Kem = X25519HkdfSha256;
 type HpkeAead = HpkeChaCha20Poly1305;
 type HpkeKdf = HkdfSha256;
 
-pub const E2EESA_MESSAGE_SUITE: &str =
-    "SUITE-HPKE-X25519-HKDF-SHA256-CHACHA20POLY1305";
+pub const E2EESA_MESSAGE_SUITE: &str = "SUITE-HPKE-X25519-HKDF-SHA256-CHACHA20POLY1305";
 pub const DEFAULT_CONTENT_TYPE: &str = "text/plain;charset=utf-8";
 
 const HPKE_INFO: &[u8] = b"End-To-End Everywhere Capsule key wrap v1";
@@ -140,7 +137,9 @@ impl fmt::Display for MessageError {
             Self::InvalidRecipientHint => "recipient hint is invalid",
             Self::UnsupportedSuite => "capsule uses an unsupported cryptographic suite",
             Self::RecipientCount => "text-message profile requires exactly one recipient stanza",
-            Self::RecipientHintMismatch => "capsule recipient hint does not match expected recipient",
+            Self::RecipientHintMismatch => {
+                "capsule recipient hint does not match expected recipient"
+            }
             Self::HpkeSeal => "HPKE content-key wrapping failed",
             Self::HpkeOpen => "HPKE content-key unwrapping failed",
             Self::InvalidContentKey => "unwrapped content key has an invalid length",
@@ -208,21 +207,23 @@ pub fn encrypt_text(
     let header_aad = domain_aad(&base_aad, b"protected-header", None);
     let payload_aad = domain_aad(&base_aad, b"message-payload", Some(&message_id));
 
-    let protected_header_ciphertext =
-        seal_content(&content_key, &header_nonce, &protected_header_plaintext, &header_aad)?;
-    let payload_ciphertext =
-        seal_content(&content_key, &payload_nonce, text_bytes, &payload_aad)?;
+    let protected_header_ciphertext = seal_content(
+        &content_key,
+        &header_nonce,
+        &protected_header_plaintext,
+        &header_aad,
+    )?;
+    let payload_ciphertext = seal_content(&content_key, &payload_nonce, text_bytes, &payload_aad)?;
 
     let wrap_aad = domain_aad(&base_aad, b"content-key-wrap", None);
-    let (encapped_key, wrapped_content_key) =
-        single_shot_seal::<HpkeAead, HpkeKdf, Kem>(
-            &OpModeS::Base,
-            &recipient_public,
-            HPKE_INFO,
-            &content_key,
-            &wrap_aad,
-        )
-        .map_err(|_| MessageError::HpkeSeal)?;
+    let (encapped_key, wrapped_content_key) = single_shot_seal::<HpkeAead, HpkeKdf, Kem>(
+        &OpModeS::Base,
+        &recipient_public,
+        HPKE_INFO,
+        &content_key,
+        &wrap_aad,
+    )
+    .map_err(|_| MessageError::HpkeSeal)?;
 
     content_key.fill(0);
 
@@ -298,19 +299,14 @@ fn decrypt_with_content_key(
 ) -> Result<DecryptedText, MessageError> {
     let (header_nonce, header_ciphertext) = split_nonce(&capsule.protected_header_ciphertext)?;
     let header_aad = domain_aad(base_aad, b"protected-header", None);
-    let header_plaintext =
-        open_content(content_key, header_nonce, header_ciphertext, &header_aad)?;
+    let header_plaintext = open_content(content_key, header_nonce, header_ciphertext, &header_aad)?;
     let header = decode_header(&header_plaintext)?;
 
     let (payload_nonce, payload_ciphertext) = split_nonce(&capsule.payload_ciphertext)?;
     if payload_nonce == header_nonce {
         return Err(MessageError::AuthenticationFailed);
     }
-    let payload_aad = domain_aad(
-        base_aad,
-        b"message-payload",
-        Some(&header.message_id),
-    );
+    let payload_aad = domain_aad(base_aad, b"message-payload", Some(&header.message_id));
     let plaintext = open_content(content_key, payload_nonce, payload_ciphertext, &payload_aad)?;
     if plaintext.len() > MAX_TEXT_BYTES {
         return Err(MessageError::TextTooLarge);
@@ -378,7 +374,13 @@ fn seal_content(
     let cipher =
         ChaCha20Poly1305::new_from_slice(content_key).map_err(|_| MessageError::EncryptFailed)?;
     cipher
-        .encrypt(Nonce::from_slice(nonce), Payload { msg: plaintext, aad })
+        .encrypt(
+            Nonce::from_slice(nonce),
+            Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .map_err(|_| MessageError::EncryptFailed)
 }
 
@@ -394,7 +396,13 @@ fn open_content(
     let cipher = ChaCha20Poly1305::new_from_slice(content_key)
         .map_err(|_| MessageError::AuthenticationFailed)?;
     cipher
-        .decrypt(Nonce::from_slice(nonce), Payload { msg: ciphertext, aad })
+        .decrypt(
+            Nonce::from_slice(nonce),
+            Payload {
+                msg: ciphertext,
+                aad,
+            },
+        )
         .map_err(|_| MessageError::AuthenticationFailed)
 }
 
