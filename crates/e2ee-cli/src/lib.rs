@@ -36,7 +36,7 @@ const MAX_FILE_BYTES: usize = 32 * 1024 * 1024;
 const MAX_ARMORED_DELIVERY_BYTES: usize = 56 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
-Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor | --uri] COMMAND\n\n\
+Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor | --uri] [--include-self] COMMAND\n\n\
 Commands:\n\
   init ENDPOINT                 Create a new local encrypted identity\n\
   identity                      Show endpoint and complete fingerprint\n\
@@ -70,7 +70,9 @@ is a shared ASCII application purpose; both peers must use the same value.\n\
 --armor explicitly selects ASCII-armored E2E deliveries on seal/open commands;\n\
 binary .e2ed remains the default. --uri selects a bounded local handoff\n\
 representation for small encrypted Capsules (not a web URL). Never paste\n\
-plain text or private credential material into an email or web address.\n";
+plain text or private credential material into an email or web address.\n\
+--include-self adds the local endpoint as an explicit signed recipient of\n\
+seal-text or seal-file; open your retained copy via open-note/open-self-file.\n";
 
 enum Command {
     Init(EndpointId),
@@ -106,6 +108,7 @@ struct Options {
     anchor: Option<ArchiveAnchor>,
     password_stdin: bool,
     delivery_format: DeliveryFormat,
+    include_self: bool,
     command: Command,
 }
 
@@ -240,6 +243,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
     let mut password_stdin = false;
     let mut armor = false;
     let mut uri = false;
+    let mut include_self = false;
     let mut offset = 0;
     while let Some(flag) = arguments.get(offset).filter(|arg| arg.starts_with("--")) {
         offset += 1;
@@ -263,6 +267,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             "--password-stdin" if !password_stdin => password_stdin = true,
             "--armor" if !armor && !uri => armor = true,
             "--uri" if !uri && !armor => uri = true,
+            "--include-self" if !include_self => include_self = true,
             _ => return Err(CliError::Usage),
         }
     }
@@ -348,6 +353,9 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             _ => return Err(CliError::Usage),
         }
     }
+    if include_self && !matches!(&command, Command::SealText(..) | Command::SealFile(..)) {
+        return Err(CliError::Usage);
+    }
     Ok(Options {
         state,
         anchor,
@@ -359,6 +367,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         } else {
             DeliveryFormat::Binary
         },
+        include_self,
         command,
     })
 }
@@ -539,10 +548,23 @@ fn run(
         Command::SealText(ids, context, source, destination) => {
             let plaintext = read_bounded_file(&source, MAX_TEXT_BYTES)?;
             let text = std::str::from_utf8(&plaintext).map_err(|_| CliError::InvalidText)?;
+            let self_recipient = if options.include_self {
+                let card = client.card().clone();
+                if ids.iter().any(|id| id == &card.endpoint_id) {
+                    return Err(CliError::Usage);
+                }
+                let fingerprint = card.fingerprint();
+                Some(VerifiedContact::confirm(card, fingerprint)?)
+            } else {
+                None
+            };
             let (session, contacts) = client.session_and_contacts(now())?;
-            let delivery = session.encrypt_text_to_contacts(
-                contacts,
-                &ids,
+            let mut recipients = contacts.resolve_recipients(&ids).map_err(ClientError::from)?;
+            if let Some(myself) = self_recipient {
+                recipients.push(myself);
+            }
+            let delivery = session.encrypt_text(
+                &recipients,
                 text,
                 SignatureMode::Signed { context: &context },
                 now(),
@@ -575,10 +597,23 @@ fn run(
                 .and_then(|name| name.to_str())
                 .ok_or(CliError::InvalidInput)?;
             let file_options = FileOptions::new(filename, "application/octet-stream");
+            let self_recipient = if options.include_self {
+                let card = client.card().clone();
+                if ids.iter().any(|id| id == &card.endpoint_id) {
+                    return Err(CliError::Usage);
+                }
+                let fingerprint = card.fingerprint();
+                Some(VerifiedContact::confirm(card, fingerprint)?)
+            } else {
+                None
+            };
             let (session, contacts) = client.session_and_contacts(now())?;
-            let delivery = session.encrypt_file_to_contacts(
-                contacts,
-                &ids,
+            let mut recipients = contacts.resolve_recipients(&ids).map_err(ClientError::from)?;
+            if let Some(myself) = self_recipient {
+                recipients.push(myself);
+            }
+            let delivery = session.encrypt_file(
+                &recipients,
                 &file_options,
                 &payload,
                 SignatureMode::Signed { context: &context },
