@@ -1,0 +1,19 @@
+[package]
+name = "e2ee-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared verified-contact and unlocked-session workflows for E2EE clients"
+
+[dependencies]
+e2ee-capsule = { path = "../e2ee-capsule" }
+e2ee-core = { path = "../e2ee-core" }
+e2ee-keystore = { path = "../e2ee-keystore" }
+e2ee-message = { path = "../e2ee-message" }
+e2ee-provenance = { path = "../e2ee-provenance" }
+e2ee-transport = { path = "../e2ee-transport" }
+sha2 = "=0.11.0"
+zeroize = "=1.8.2"
+
+[lints]
+workspace = true
