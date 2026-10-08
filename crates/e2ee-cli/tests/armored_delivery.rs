@@ -32,10 +32,11 @@ impl Drop for Workspace {
 
 fn invoke(state: &Path, armored: bool, command: &[&str]) -> Output {
     let mut process = Command::new(env!("CARGO_BIN_EXE_e2ee"));
-    process
-        .arg("--state")
-        .arg(state)
-        .args(["--software-vault", "--password-only", "--password-stdin"]);
+    process.arg("--state").arg(state).args([
+        "--software-vault",
+        "--password-only",
+        "--password-stdin",
+    ]);
     if armored {
         process.arg("--armor");
     }
@@ -104,8 +105,7 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
         fs::metadata(&encrypted).unwrap().permissions().mode() & 0o777,
         0o600
     );
-    assert!(
-        !invoke(
+    assert!(!invoke(
             &bob,
             false,
             &[
@@ -116,9 +116,8 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
                 decrypted.to_str().unwrap(),
             ],
         )
-        .status
-        .success()
-    );
+    .status
+    .success());
     assert!(!decrypted.exists());
     succeeded(invoke(
         &bob,
@@ -140,8 +139,7 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
     let malformed = temp.0.join("malformed.asc");
     let rejected = temp.0.join("rejected.txt");
     fs::write(&malformed, format!("{armor}APPENDED CONTENT")).unwrap();
-    assert!(
-        !invoke(
+    assert!(!invoke(
             &bob,
             true,
             &[
@@ -152,9 +150,8 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
                 rejected.to_str().unwrap(),
             ],
         )
-        .status
-        .success()
-    );
+    .status
+    .success());
     assert!(!rejected.exists());
 
     let binary_file = temp.0.join("original.bin");
