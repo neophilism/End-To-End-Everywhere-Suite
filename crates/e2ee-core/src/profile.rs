@@ -76,8 +76,7 @@ impl ProfileSet {
                 return Err("conflicting versions of the same profile");
             }
         }
-        self.profiles
-            .insert(profile.id.name().to_owned(), profile);
+        self.profiles.insert(profile.id.name().to_owned(), profile);
         Ok(())
     }
 
