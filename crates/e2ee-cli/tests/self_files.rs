@@ -71,13 +71,7 @@ fn protect(state: &Path, mode: Option<&str>, source: &Path, target: &Path) -> Ou
         ],
     )
 }
-fn restore(
-    state: &Path,
-    mode: Option<&str>,
-    context: &str,
-    input: &Path,
-    output: &Path,
-) -> Output {
+fn restore(state: &Path, mode: Option<&str>, context: &str, input: &Path, output: &Path) -> Output {
     run(
         state,
         mode,
