@@ -9,6 +9,8 @@
 use e2ee_core::{ProfileId, ProfileParseError};
 use std::fmt;
 
+pub mod software;
+
 pub const PLATFORM_KEYSTORE_PROFILE: &str = "secret-platform-keystore@0.1.0";
 pub const HARDWARE_ISOLATED_PROFILE: &str = "secret-hardware-isolated@0.1.0";
 pub const EXTERNAL_TOKEN_PROFILE: &str = "secret-external-token@0.1.0";
@@ -34,6 +36,8 @@ pub enum BackendKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportPolicy {
     NonExportable,
+    /// Encrypted at rest, but readable by the authorized software process.
+    SoftwareProtected,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -83,6 +87,11 @@ pub enum KeyStoreError {
     PolicyViolation,
     RollbackDetected,
     NotFound,
+    AlreadyExists,
+    RandomnessFailure,
+    GenerationExhausted,
+    InvalidGeneration,
+    CapacityExceeded,
 }
 
 impl fmt::Display for KeyStoreError {
@@ -94,6 +103,11 @@ impl fmt::Display for KeyStoreError {
             Self::PolicyViolation => "secure key-store policy was violated",
             Self::RollbackDetected => "secret generation rollback was detected",
             Self::NotFound => "secret handle was not found",
+            Self::AlreadyExists => "secret handle already exists",
+            Self::RandomnessFailure => "secure randomness failed",
+            Self::GenerationExhausted => "secret generation is exhausted",
+            Self::InvalidGeneration => "secret generation must be positive",
+            Self::CapacityExceeded => "key store capacity was exceeded",
         };
         f.write_str(message)
     }

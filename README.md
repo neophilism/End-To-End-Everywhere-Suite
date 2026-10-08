@@ -26,3 +26,5 @@ multi-recipient envelopes, optional signer verification, and portable signed or
 unsigned deliveries. See [multi-recipient Capsules](docs/multi-recipient-capsules.md),
 [signatures](docs/capsule-signatures.md), and [transport](docs/capsule-transport.md).
 Consumer applications and platform keystore adapters are subsequent milestones.
+The explicit [software-vault fallback](docs/software-vault.md) now encrypts
+durable roots and local protocol state with local password-based unlocking.
