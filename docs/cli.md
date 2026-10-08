@@ -171,3 +171,25 @@ protect and clear those files as appropriate; snapshots, filesystem backups
 and indexing may retain copies. Losing the identity's encrypted archive or
 its unlock secret may make notes unrecoverable. Password-only restores do not
 provide independent rollback or identity pinning.
+
+## Personal encrypted file protection
+
+Encrypt a local file to the **same authenticated endpoint identity** without
+importing an address-book contact:
+
+```sh
+e2ee --state ./my-private --software-vault --password-only seal-self-file private-file-v1 ./personal-photo.jpg ./photo.e2ed
+e2ee --state ./my-private --software-vault --password-only open-self-file private-file-v1 ./photo.e2ed ./recovered.jpg
+```
+
+Up to 32 MiB of file content can be packaged in one inline Capsule. Use
+`--armor` for a text-only carrier or `--uri` only for small attachments
+that fit the 8,192-byte local URI limit. The full sender signature is
+verified using the authenticated local endpoint card before decrypted
+bytes are written to a freshly created private (0600) output file.
+The embedded filename is **never** used as the output path or executed.
+
+This is standalone file encryption, **not** filesystem-wide encryption,
+automatic local vault storage or a safe file editor. Source and restored
+files are plaintext; protect them and local backups separately. Never
+discard the encrypted identity archive needed to decrypt your files.
