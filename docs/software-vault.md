@@ -35,3 +35,6 @@ separate integration work.
 Provisioning never replaces an existing root. Passphrases and plaintext are
 not logged, exported by the root API, or sent to any service. The encrypted
 snapshot contains root material and requires the user's unlock secret.
+
+See [credential lifecycle](vault-credential-lifecycle.md) for passphrase changes,
+root retirement, authenticated tombstones and snapshot-version migration.
