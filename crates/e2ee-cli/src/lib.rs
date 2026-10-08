@@ -41,6 +41,8 @@ Commands:\n\
   init ENDPOINT                 Create a new local encrypted identity\n\
   identity                      Show endpoint and complete fingerprint\n\
   card                          Export the public contact URI\n\
+  card-save OUTPUT              Save the public contact card to a new file\n\
+  import-card INPUT             Import a contact card from a local file\n\
   contacts                      List current contact fingerprints/status\n\
   import CONTACT_URI            Observe a contact without granting trust\n\
   verify ENDPOINT FINGERPRINT    Confirm a fingerprint from an independent channel\n\
@@ -74,6 +76,8 @@ enum Command {
     Init(EndpointId),
     Identity,
     Card,
+    CardSave(PathBuf),
+    ImportCard(PathBuf),
     Contacts,
     Import(EndpointCard),
     Verify(EndpointId, [u8; 32]),
@@ -271,6 +275,8 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         ["init", id] if anchor.is_none() => Command::Init(endpoint(id)?),
         ["identity"] => Command::Identity,
         ["card"] => Command::Card,
+        ["card-save", output] => Command::CardSave(PathBuf::from(output)),
+        ["import-card", input] => Command::ImportCard(PathBuf::from(input)),
         ["contacts"] => Command::Contacts,
         ["import", uri] => Command::Import(EndpointCard::from_uri(uri)?),
         ["verify", id, fingerprint] => Command::Verify(
@@ -445,6 +451,35 @@ fn run(
         Command::Card => {
             writeln!(output, "{}", client.card().to_uri()?)?;
             false
+        }
+        Command::CardSave(destination) => {
+            let uri = client.card().to_uri()?;
+            let mut encoded = uri.into_bytes();
+            encoded.push(b'\n');
+            check_interrupted()?;
+            write_new_private(&destination, &encoded)?;
+            writeln!(output, "Public contact card saved to a new private file.")?;
+            false
+        }
+        Command::ImportCard(source) => {
+            // Limit card size; reject multiple lines rather than silently
+            // accepting a prefix and ignoring unexpected contact records.
+            let bytes = read_bounded_file(&source, 4096)?;
+            let text = std::str::from_utf8(&bytes).map_err(|_| CliError::InvalidInput)?;
+            let uri = text
+                .strip_suffix("\r\n")
+                .or_else(|| text.strip_suffix('\n'))
+                .unwrap_or(text);
+            if uri.is_empty() || uri.contains(['\n', '\r', '\0']) {
+                return Err(CliError::InvalidInput);
+            }
+            let card = EndpointCard::from_uri(uri)?;
+            client
+                .session_and_contacts(now())?
+                .1
+                .observe(card)
+                .map_err(ArchiveError::from)?;
+            true
         }
         Command::Contacts => {
             for (card, status) in client.session_and_contacts(now())?.1.contacts() {
