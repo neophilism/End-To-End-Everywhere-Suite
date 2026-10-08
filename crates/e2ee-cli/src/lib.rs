@@ -564,10 +564,8 @@ fn run(
             let plaintext = read_bounded_file(&source, MAX_TEXT_BYTES)?;
             let text = std::str::from_utf8(&plaintext).map_err(|_| CliError::InvalidText)?;
             let self_card = client.card().clone();
-            let pinned = VerifiedContact::confirm(
-                self_card.clone(),
-                self_card.fingerprint(),
-            )?;
+            let fingerprint = self_card.fingerprint();
+            let pinned = VerifiedContact::confirm(self_card, fingerprint)?;
             let (session, _) = client.session_and_contacts(now())?;
             let delivery = session.encrypt_text(
                 &[pinned],
@@ -586,10 +584,8 @@ fn run(
             // The local archive's authenticated endpoint card supplies the
             // pinned self-signature key. It never trusts one from the delivery.
             let self_card = client.card().clone();
-            let pinned = VerifiedContact::confirm(
-                self_card.clone(),
-                self_card.fingerprint(),
-            )?;
+            let fingerprint = self_card.fingerprint();
+            let pinned = VerifiedContact::confirm(self_card, fingerprint)?;
             let (session, _) = client.session_and_contacts(now())?;
             let opened = session.open_text(
                 &delivery,
