@@ -373,9 +373,10 @@ fn seal_content(
 ) -> Result<Vec<u8>, MessageError> {
     let cipher =
         ChaCha20Poly1305::new_from_slice(content_key).map_err(|_| MessageError::EncryptFailed)?;
+    let nonce = Nonce::try_from(&nonce[..]).map_err(|_| MessageError::EncryptFailed)?;
     cipher
         .encrypt(
-            Nonce::from_slice(nonce),
+            &nonce,
             Payload {
                 msg: plaintext,
                 aad,
@@ -395,9 +396,10 @@ fn open_content(
     }
     let cipher = ChaCha20Poly1305::new_from_slice(content_key)
         .map_err(|_| MessageError::AuthenticationFailed)?;
+    let nonce = Nonce::try_from(nonce).map_err(|_| MessageError::AuthenticationFailed)?;
     cipher
         .decrypt(
-            Nonce::from_slice(nonce),
+            &nonce,
             Payload {
                 msg: ciphertext,
                 aad,
