@@ -295,7 +295,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         _ => return Err(CliError::Usage),
     };
     if armor && !matches!(
-        command,
+        &command,
         Command::SealText(..)
             | Command::OpenText(..)
             | Command::SealFile(..)
