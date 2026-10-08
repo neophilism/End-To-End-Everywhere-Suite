@@ -40,3 +40,5 @@ A [private durable file adapter](docs/private-state-storage.md) now supports who
 atomic commits, exclusive writer locks and stale-write detection on Unix hosts.
 The [persistent client archive](docs/client-archives.md) now restores vault,
 endpoint keys and contact trust together, with explicit anchored or password-only policies.
+The [local CLI](docs/cli.md) now creates persistent identities and manages verified
+contacts and unlock credentials with hidden terminal prompts.

@@ -2,6 +2,7 @@
 members = [
   "crates/e2ee-capsule",
   "crates/e2ee-client",
+  "crates/e2ee-cli",
   "crates/e2ee-core",
   "crates/e2ee-directory",
   "crates/e2ee-enrollment",
