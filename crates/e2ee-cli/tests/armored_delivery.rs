@@ -106,16 +106,16 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
         0o600
     );
     assert!(!invoke(
-            &bob,
-            false,
-            &[
-                "open-text",
-                "alice",
-                "email-body-v1",
-                encrypted.to_str().unwrap(),
-                decrypted.to_str().unwrap(),
-            ],
-        )
+        &bob,
+        false,
+        &[
+            "open-text",
+            "alice",
+            "email-body-v1",
+            encrypted.to_str().unwrap(),
+            decrypted.to_str().unwrap(),
+        ],
+    )
     .status
     .success());
     assert!(!decrypted.exists());
@@ -140,16 +140,16 @@ fn text_and_file_armor_roundtrip_rejects_wrong_mode_and_tampering() {
     let rejected = temp.0.join("rejected.txt");
     fs::write(&malformed, format!("{armor}APPENDED CONTENT")).unwrap();
     assert!(!invoke(
-            &bob,
-            true,
-            &[
-                "open-text",
-                "alice",
-                "email-body-v1",
-                malformed.to_str().unwrap(),
-                rejected.to_str().unwrap(),
-            ],
-        )
+        &bob,
+        true,
+        &[
+            "open-text",
+            "alice",
+            "email-body-v1",
+            malformed.to_str().unwrap(),
+            rejected.to_str().unwrap(),
+        ],
+    )
     .status
     .success());
     assert!(!rejected.exists());
