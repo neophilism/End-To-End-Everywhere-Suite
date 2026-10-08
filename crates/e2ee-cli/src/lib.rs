@@ -294,13 +294,15 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         ),
         _ => return Err(CliError::Usage),
     };
-    if armor && !matches!(
-        &command,
-        Command::SealText(..)
-            | Command::OpenText(..)
-            | Command::SealFile(..)
-            | Command::OpenFile(..)
-    ) {
+    if armor
+        && !matches!(
+            &command,
+            Command::SealText(..)
+                | Command::OpenText(..)
+                | Command::SealFile(..)
+                | Command::OpenFile(..)
+        )
+    {
         return Err(CliError::Usage);
     }
     Ok(Options {
