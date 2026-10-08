@@ -89,7 +89,10 @@ fn file_delivery_roundtrip_and_authentication_fail_closed() {
             delivery.to_str().unwrap(),
         ],
     ));
-    assert_eq!(fs::metadata(&delivery).unwrap().permissions().mode() & 0o777, 0o600);
+    assert_eq!(
+        fs::metadata(&delivery).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
     let wrong = call(
         &bob,
         &[
@@ -113,7 +116,10 @@ fn file_delivery_roundtrip_and_authentication_fail_closed() {
         ],
     ));
     assert_eq!(fs::read(&opened).unwrap(), bytes);
-    assert_eq!(fs::metadata(&opened).unwrap().permissions().mode() & 0o777, 0o600);
+    assert_eq!(
+        fs::metadata(&opened).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
     let second = call(
         &bob,
         &[
