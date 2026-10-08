@@ -472,7 +472,7 @@ fn read_bounded_file(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, Cl
         return Err(CliError::InvalidInput);
     }
     let mut contents = Zeroizing::new(Vec::new());
-    file.take(limit as u64 + 1).read_to_end(&mut *contents)?;
+    file.take(limit as u64 + 1).read_to_end(&mut contents)?;
     if contents.len() > limit {
         return Err(CliError::FileTooLarge);
     }
