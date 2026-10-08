@@ -23,6 +23,7 @@ const MAX_ROOTS: usize = 1024;
 const MAX_HANDLE: usize = 512;
 pub const MAX_SNAPSHOT_BYTES: usize = 1024 * 1024;
 pub const MAX_STATE_BYTES: usize = 1024 * 1024;
+pub const VAULT_SNAPSHOT_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VaultKdf {
@@ -126,7 +127,7 @@ impl From<KeyStoreError> for VaultError {
 struct Root {
     class: SecretClass,
     generation: u64,
-    key: Zeroizing<[u8; 32]>,
+    key: Option<Zeroizing<[u8; 32]>>,
 }
 
 /// Keep this object only while the application is unlocked. Drop it to lock;
@@ -186,6 +187,54 @@ impl SoftwareVault {
         self.revision
     }
 
+    /// Replace the local unlock credential without replacing protocol roots.
+    /// After success, persist a new snapshot before advancing the trusted floor.
+    pub fn change_passphrase(
+        &mut self,
+        passphrase: Zeroizing<Vec<u8>>,
+        kdf: VaultKdf,
+        budget: KdfBudget,
+    ) -> Result<(), VaultError> {
+        let revision = self
+            .revision
+            .checked_add(1)
+            .ok_or(KeyStoreError::GenerationExhausted)?;
+        let params = kdf.params(budget)?;
+        let salt = random()?;
+        let wrapping_key = derive(&passphrase, &salt, params)?;
+        // All fallible preparation precedes mutation; assigning the Zeroizing
+        // wrapper also clears the previous password-derived key.
+        self.wrapping_key = wrapping_key;
+        self.salt = salt;
+        self.kdf = kdf;
+        self.revision = revision;
+        Ok(())
+    }
+
+    /// Remove and zeroize one wrapping root. Its authenticated tombstone remains
+    /// so provisioning the retired handle again cannot accidentally reuse it.
+    pub fn retire_root(&mut self, handle: &SecretHandle) -> Result<(), VaultError> {
+        if self
+            .roots
+            .get(handle)
+            .ok_or(KeyStoreError::NotFound)?
+            .key
+            .is_none()
+        {
+            return Err(KeyStoreError::NotFound.into());
+        }
+        let revision = self
+            .revision
+            .checked_add(1)
+            .ok_or(KeyStoreError::GenerationExhausted)?;
+        self.roots
+            .get_mut(handle)
+            .ok_or(KeyStoreError::NotFound)?
+            .key = None;
+        self.revision = revision;
+        Ok(())
+    }
+
     /// Export ciphertext only. The caller persists the snapshot and updates its
     /// independent revision anchor after a successful durable write.
     pub fn snapshot(&self) -> Result<Vec<u8>, VaultError> {
@@ -197,11 +246,17 @@ impl SoftwareVault {
             plaintext.extend_from_slice(bytes);
             plaintext.push(class_tag(root.class));
             plaintext.extend_from_slice(&root.generation.to_be_bytes());
-            plaintext.extend_from_slice(root.key.as_ref());
+            match &root.key {
+                Some(key) => {
+                    plaintext.push(0);
+                    plaintext.extend_from_slice(key.as_ref());
+                }
+                None => plaintext.push(1),
+            }
         }
         let mut header = Vec::with_capacity(SNAPSHOT_HEADER);
         header.extend_from_slice(b"E2SV");
-        header.extend_from_slice(&1_u16.to_be_bytes());
+        header.extend_from_slice(&VAULT_SNAPSHOT_VERSION.to_be_bytes());
         header.extend_from_slice(&self.kdf.memory_kib.to_be_bytes());
         header.extend_from_slice(&self.kdf.iterations.to_be_bytes());
         header.extend_from_slice(&self.kdf.parallelism.to_be_bytes());
@@ -252,7 +307,8 @@ impl SoftwareVault {
         if revision == 0 || minimum_revision == 0 || revision < minimum_revision {
             return Err(VaultError::RollbackDetected);
         }
-        let roots = decode_roots(&plaintext)?;
+        let version = u16::from_be_bytes([bytes[4], bytes[5]]);
+        let roots = decode_roots(&plaintext, version)?;
         Ok(Self {
             profile: ProfileId::parse(SOFTWARE_VAULT_PROFILE)
                 .map_err(|_| KeyStoreError::UnsupportedProfile)?,
@@ -277,6 +333,7 @@ impl SoftwareVault {
             return Err(VaultError::LimitExceeded);
         }
         let root = self.roots.get(handle).ok_or(KeyStoreError::NotFound)?;
+        let key = root.key.as_ref().ok_or(KeyStoreError::NotFound)?;
         let mut header = Vec::with_capacity(STATE_HEADER);
         header.extend_from_slice(b"E2LS");
         header.extend_from_slice(&1_u16.to_be_bytes());
@@ -285,7 +342,7 @@ impl SoftwareVault {
         header.extend_from_slice(&random::<12>()?);
         header.extend_from_slice(&((plaintext.len() + 16) as u32).to_be_bytes());
         let ciphertext = encrypt(
-            &root.key,
+            key,
             &header[22..34],
             plaintext,
             &self.state_aad(handle, root, context, &header),
@@ -309,8 +366,9 @@ impl SoftwareVault {
             MAX_STATE_BYTES + STATE_HEADER + 16,
         )?;
         let root = self.roots.get(handle).ok_or(KeyStoreError::NotFound)?;
+        let key = root.key.as_ref().ok_or(KeyStoreError::NotFound)?;
         let plaintext = decrypt(
-            &root.key,
+            key,
             &bytes[22..34],
             &bytes[STATE_HEADER..],
             &self.state_aad(handle, root, context, &bytes[..STATE_HEADER]),
@@ -372,7 +430,7 @@ impl SecureKeyStore for SoftwareVault {
             Root {
                 class: request.class,
                 generation: request.minimum_generation,
-                key,
+                key: Some(key),
             },
         );
         self.revision = revision;
@@ -381,6 +439,9 @@ impl SecureKeyStore for SoftwareVault {
 
     fn metadata(&self, handle: &SecretHandle) -> Result<SecretMetadata, KeyStoreError> {
         let root = self.roots.get(handle).ok_or(KeyStoreError::NotFound)?;
+        if root.key.is_none() {
+            return Err(KeyStoreError::NotFound);
+        }
         Ok(SecretMetadata {
             handle: handle.clone(),
             class: root.class,
@@ -472,7 +533,8 @@ fn framing(bytes: &[u8], magic: &[u8; 4], header: usize, limit: usize) -> Result
     if bytes.len() < header + 16 || bytes.get(..4) != Some(magic) {
         return Err(VaultError::Malformed);
     }
-    if bytes[4..6] != 1_u16.to_be_bytes() {
+    let version = u16::from_be_bytes([bytes[4], bytes[5]]);
+    if version != 1 && !(magic == b"E2SV" && version == VAULT_SNAPSHOT_VERSION) {
         return Err(VaultError::UnsupportedVersion);
     }
     let length = number32(bytes, header - 4) as usize;
@@ -508,7 +570,10 @@ fn class_tag(class: SecretClass) -> u8 {
     }
 }
 
-fn decode_roots(bytes: &[u8]) -> Result<BTreeMap<SecretHandle, Root>, VaultError> {
+fn decode_roots(bytes: &[u8], version: u16) -> Result<BTreeMap<SecretHandle, Root>, VaultError> {
+    if !matches!(version, 1 | 2) {
+        return Err(VaultError::UnsupportedVersion);
+    }
     let mut reader = Reader { bytes, offset: 0 };
     let count = u16::from_be_bytes(
         reader
@@ -555,12 +620,25 @@ fn decode_roots(bytes: &[u8]) -> Result<BTreeMap<SecretHandle, Root>, VaultError
         if generation == 0 {
             return Err(VaultError::Malformed);
         }
-        let key = Zeroizing::new(
-            reader
-                .take(32)?
-                .try_into()
-                .map_err(|_| VaultError::Malformed)?,
-        );
+        let retired = if version == 1 {
+            false
+        } else {
+            match reader.take(1)?[0] {
+                0 => false,
+                1 => true,
+                _ => return Err(VaultError::Malformed),
+            }
+        };
+        let key = if retired {
+            None
+        } else {
+            Some(Zeroizing::new(
+                reader
+                    .take(32)?
+                    .try_into()
+                    .map_err(|_| VaultError::Malformed)?,
+            ))
+        };
         roots.insert(
             handle,
             Root {
@@ -774,6 +852,170 @@ mod tests {
     }
 
     #[test]
+    fn credential_change_preserves_roots_and_invalidates_old_unlock_secret() {
+        let mut vault = vault();
+        let handle = request("protocol/root").handle;
+        vault.provision(request("protocol/root")).unwrap();
+        let state = vault
+            .seal_state(&handle, 1, b"endpoint", b"private protocol state")
+            .unwrap();
+        let old_snapshot = vault.snapshot().unwrap();
+        let old_revision = vault.revision();
+        let old_salt = vault.salt;
+        let new_password = || Zeroizing::new(b"a different strong unlock phrase".to_vec());
+        vault
+            .change_passphrase(new_password(), VaultKdf::default(), KdfBudget::default())
+            .unwrap();
+        assert_eq!(vault.revision(), old_revision + 1);
+        assert_ne!(vault.salt, old_salt);
+        let new_snapshot = vault.snapshot().unwrap();
+        let restored = SoftwareVault::unlock(
+            &new_snapshot,
+            new_password(),
+            vault.vault_id(),
+            vault.revision(),
+            KdfBudget::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            &*restored
+                .open_state(&handle, 1, b"endpoint", &state)
+                .unwrap(),
+            b"private protocol state"
+        );
+        assert!(matches!(
+            SoftwareVault::unlock(
+                &new_snapshot,
+                password(),
+                vault.vault_id(),
+                vault.revision(),
+                KdfBudget::default()
+            ),
+            Err(VaultError::AuthenticationFailed)
+        ));
+        assert!(matches!(
+            SoftwareVault::unlock(
+                &old_snapshot,
+                password(),
+                vault.vault_id(),
+                vault.revision(),
+                KdfBudget::default()
+            ),
+            Err(VaultError::RollbackDetected)
+        ));
+    }
+
+    #[test]
+    fn failed_changes_and_revision_exhaustion_leave_existing_keys_usable() {
+        let mut vault = vault();
+        let handle = request("protocol/root").handle;
+        vault.provision(request("protocol/root")).unwrap();
+        let state = vault.seal_state(&handle, 1, b"context", b"secret").unwrap();
+        let revision = vault.revision();
+        let salt = vault.salt;
+        assert_eq!(
+            vault.change_passphrase(
+                Zeroizing::new(b"short".to_vec()),
+                VaultKdf::default(),
+                KdfBudget::default()
+            ),
+            Err(VaultError::InvalidPassphrase)
+        );
+        assert_eq!(vault.revision(), revision);
+        assert_eq!(vault.salt, salt);
+        vault.revision = u64::MAX;
+        assert_eq!(
+            vault.change_passphrase(password(), VaultKdf::default(), KdfBudget::default()),
+            Err(VaultError::KeyStore(KeyStoreError::GenerationExhausted))
+        );
+        assert_eq!(
+            vault.retire_root(&handle),
+            Err(VaultError::KeyStore(KeyStoreError::GenerationExhausted))
+        );
+        assert_eq!(
+            &*vault.open_state(&handle, 1, b"context", &state).unwrap(),
+            b"secret"
+        );
+    }
+
+    #[test]
+    fn retired_roots_stay_unusable_and_handles_cannot_be_reprovisioned_after_restart() {
+        let mut vault = vault();
+        let handle = request("protocol/root").handle;
+        vault.provision(request("protocol/root")).unwrap();
+        let state = vault.seal_state(&handle, 1, b"context", b"secret").unwrap();
+        vault.retire_root(&handle).unwrap();
+        assert_eq!(vault.metadata(&handle), Err(KeyStoreError::NotFound));
+        assert_eq!(
+            vault.provision(request("protocol/root")),
+            Err(KeyStoreError::AlreadyExists)
+        );
+        let restored = SoftwareVault::unlock(
+            &vault.snapshot().unwrap(),
+            password(),
+            vault.vault_id(),
+            vault.revision(),
+            KdfBudget::default(),
+        )
+        .unwrap();
+        assert!(matches!(
+            restored.open_state(&handle, 1, b"context", &state),
+            Err(VaultError::KeyStore(KeyStoreError::NotFound))
+        ));
+        assert!(matches!(
+            restored.seal_state(&handle, 2, b"context", b"new"),
+            Err(VaultError::KeyStore(KeyStoreError::NotFound))
+        ));
+        assert!(restored.roots.get(&handle).unwrap().key.is_none());
+    }
+
+    #[test]
+    fn authenticated_v1_snapshots_migrate_without_changing_protocol_roots() {
+        let mut vault = vault();
+        let handle = request("protocol/root").handle;
+        vault.provision(request("protocol/root")).unwrap();
+        let root = vault.roots.get(&handle).unwrap();
+        let mut legacy_plaintext = Zeroizing::new(vec![0, 1]);
+        legacy_plaintext.extend_from_slice(&(handle.as_str().len() as u16).to_be_bytes());
+        legacy_plaintext.extend_from_slice(handle.as_str().as_bytes());
+        legacy_plaintext.push(class_tag(root.class));
+        legacy_plaintext.extend_from_slice(&root.generation.to_be_bytes());
+        legacy_plaintext.extend_from_slice(root.key.as_ref().unwrap().as_ref());
+        let mut header = vault.snapshot().unwrap()[..SNAPSHOT_HEADER].to_vec();
+        header[4..6].copy_from_slice(&1_u16.to_be_bytes());
+        header[58..70].copy_from_slice(&random::<12>().unwrap());
+        header[70..74].copy_from_slice(&((legacy_plaintext.len() + 16) as u32).to_be_bytes());
+        let encrypted = encrypt(
+            &vault.wrapping_key,
+            &header[58..70],
+            &legacy_plaintext,
+            &snapshot_aad(&header),
+        )
+        .unwrap();
+        header.extend_from_slice(&encrypted);
+        let state = vault
+            .seal_state(&handle, 1, b"context", b"legacy state")
+            .unwrap();
+        let restored = SoftwareVault::unlock(
+            &header,
+            password(),
+            vault.vault_id(),
+            vault.revision(),
+            KdfBudget::default(),
+        )
+        .unwrap();
+        assert_eq!(
+            &*restored.open_state(&handle, 1, b"context", &state).unwrap(),
+            b"legacy state"
+        );
+        assert_eq!(&restored.snapshot().unwrap()[4..6], &2_u16.to_be_bytes());
+        let mut malformed_plaintext = Zeroizing::new(legacy_plaintext.to_vec());
+        let flag_offset = malformed_plaintext.len() - 32;
+        malformed_plaintext.insert(flag_offset, 2);
+        assert!(decode_roots(&malformed_plaintext, 2).is_err());
+    }
+
+    #[test]
     fn all_truncations_and_noncanonical_root_records_are_rejected() {
         let vault = vault();
         let snapshot = vault.snapshot().unwrap();
@@ -787,8 +1029,8 @@ mod tests {
             )
             .is_err());
         }
-        assert!(decode_roots(&[0, 0, 1]).is_err());
-        assert!(decode_roots(&[0xff, 0xff]).is_err());
-        assert!(decode_roots(&[0, 1, 0, 0]).is_err());
+        assert!(decode_roots(&[0, 0, 1], 2).is_err());
+        assert!(decode_roots(&[0xff, 0xff], 2).is_err());
+        assert!(decode_roots(&[0, 1, 0, 0], 2).is_err());
     }
 }
