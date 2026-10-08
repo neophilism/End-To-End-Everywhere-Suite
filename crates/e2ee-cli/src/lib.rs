@@ -33,6 +33,7 @@ static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_DELIVERY_BYTES: usize = 40 * 1024 * 1024;
 const MAX_FILE_BYTES: usize = 32 * 1024 * 1024;
+const MAX_RECIPIENT_FILE_BYTES: usize = 132_096;
 const MAX_ARMORED_DELIVERY_BYTES: usize = 56 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
@@ -51,8 +52,10 @@ Commands:\n\
   passwd                        Change the local unlock passphrase\n\
   seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
   open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\
+  seal-text-list LIST CONTEXT INPUT OUTPUT Encrypt/sign text to verified IDs in LIST\n\
   seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
   open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\
+  seal-file-list LIST CONTEXT INPUT OUTPUT Encrypt/sign a file to verified IDs in LIST\n\
   seal-note CONTEXT INPUT OUTPUT  Encrypt/sign a personal note to this identity\n\
   open-note CONTEXT INPUT OUTPUT  Open a signed personal note from this identity\n\
   seal-self-file CONTEXT INPUT OUTPUT  Encrypt/sign a local attachment to self\n\
@@ -300,6 +303,12 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["seal-text-list", list, context, input, output] => Command::SealText(
+            recipients_from_file(Path::new(list))?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         ["open-text", sender, context, input, output] => Command::OpenText(
             endpoint(sender)?,
             application_context(context)?.to_owned(),
@@ -308,6 +317,12 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         ),
         ["seal-file", ids, context, input, output] => Command::SealFile(
             recipients(ids)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
+        ["seal-file-list", list, context, input, output] => Command::SealFile(
+            recipients_from_file(Path::new(list))?,
             application_context(context)?.to_owned(),
             PathBuf::from(input),
             PathBuf::from(output),
@@ -393,6 +408,31 @@ fn recipients(value: &str) -> Result<Vec<EndpointId>, CliError> {
     let ids: Vec<_> = value.split(',').map(endpoint).collect::<Result<_, _>>()?;
     if ids.is_empty() || ids.len() > 1024 {
         return Err(CliError::Usage);
+    }
+    Ok(ids)
+}
+
+/// Plaintext membership list: one exact endpoint ID per LF or CRLF line.
+/// Reject blanks, control bytes and duplicate entries (at trust-resolution time).
+fn recipients_from_file(path: &Path) -> Result<Vec<EndpointId>, CliError> {
+    let file = read_bounded_file(path, MAX_RECIPIENT_FILE_BYTES)?;
+    let contents = std::str::from_utf8(&file).map_err(|_| CliError::InvalidInput)?;
+    if contents.is_empty() || contents.ends_with('\r') {
+        return Err(CliError::InvalidInput);
+    }
+    let mut ids = Vec::new();
+    for record in contents.split_terminator('\n') {
+        let id = record.strip_suffix('\r').unwrap_or(record);
+        if id.is_empty() || id.bytes().any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control()) {
+            return Err(CliError::InvalidInput);
+        }
+        ids.push(endpoint(id)?);
+        if ids.len() > 1024 {
+            return Err(CliError::Usage);
+        }
+    }
+    if ids.is_empty() {
+        return Err(CliError::InvalidInput);
     }
     Ok(ids)
 }
