@@ -123,3 +123,26 @@ The `--armor` option is rejected on identity, contact and password commands;
 it never silently guesses formats. Input size is bounded, output files must
 not already exist, and decoded ciphertext is not published before signature
 verification and authenticated opening. Encrypted output remains 0600 on Unix.
+
+## Small local URI handoff (not HTTP)
+
+The `--uri` selector exports an encrypted Capsule as a compact
+`e2ed:v1:` local-handoff representation. Its maximum encoded size is
+8,192 bytes, so it is intended for short signed notes rather than
+attachments. An oversized delivery fails without creating an output file.
+Use this mode when handing ciphertext to a trusted QR renderer or another
+local application that accepts this envelope type.
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only --uri seal-text bob note-v1 ./note.txt ./encrypted-uri.txt
+e2ee --state ./bob-private --software-vault --password-only --uri open-text alice note-v1 ./encrypted-uri.txt ./decrypted-note.txt
+```
+
+The `--uri` format is **not a browser URL** and must not be inserted into
+HTTP query strings, analytics, server logs, or third-party URL shorteners.
+Like binary and armored deliveries, a valid prefix does not establish
+authenticity: opening still requires a separately verified sender, an exact
+signature context and authenticated decryption for the local recipient.
+Only one explicit delivery encoding may be selected (`--armor` and `--uri`
+are mutually exclusive), and neither is accepted for identity/password
+commands. QR pairing and safe display surfaces require separate work.
