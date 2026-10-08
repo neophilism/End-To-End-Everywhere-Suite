@@ -146,3 +146,28 @@ signature context and authenticated decryption for the local recipient.
 Only one explicit delivery encoding may be selected (`--armor` and `--uri`
 are mutually exclusive), and neither is accepted for identity/password
 commands. QR pairing and safe display surfaces require separate work.
+
+## Local self-encrypted notes
+
+Protect a short note using your own local endpoint without creating,
+importing, or verifying a separate contact. The `seal-note` command encrypts
+to the local endpoint and signs with the same unlocked identity. The
+`open-note` command refuses any delivery whose signature does not match that
+authenticated local endpoint card and the exact context supplied by the user.
+
+```sh
+e2ee --state ./my-private --software-vault --password-only seal-note personal-note-v1 ./scratch.txt ./note.e2ed
+e2ee --state ./my-private --software-vault --password-only open-note personal-note-v1 ./note.e2ed ./opened.txt
+```
+
+Both commands support the same explicit `--armor` and size-limited `--uri`
+formats as regular deliveries. Output files are always newly created and 0600
+on Unix; the CLI never prints note contents by default.
+
+This is an encrypted **note file**, not yet a notes-management application,
+encrypted editor, secure clipboard, or automatically synchronized vault.
+The plaintext input and any decrypted output remain on disk. Users should
+protect and clear those files as appropriate; snapshots, filesystem backups
+and indexing may retain copies. Losing the identity's encrypted archive or
+its unlock secret may make notes unrecoverable. Password-only restores do not
+provide independent rollback or identity pinning.
