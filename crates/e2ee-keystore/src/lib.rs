@@ -44,9 +44,10 @@ impl SecretHandle {
         if value.is_empty() {
             return Err(KeyStoreError::InvalidHandle);
         }
-        if !value.bytes().all(|b| {
-            b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b':' | b'/')
-        }) {
+        if !value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b':' | b'/'))
+        {
             return Err(KeyStoreError::InvalidHandle);
         }
         Ok(Self(value.to_owned()))
@@ -231,10 +232,8 @@ mod tests {
 
     #[test]
     fn provisioning_binds_exact_profile_and_nonexportability() {
-        let mut backend = MetadataOnlyBackend::new(
-            PLATFORM_KEYSTORE_PROFILE,
-            BackendKind::PlatformKeystore,
-        );
+        let mut backend =
+            MetadataOnlyBackend::new(PLATFORM_KEYSTORE_PROFILE, BackendKind::PlatformKeystore);
         let metadata = backend
             .provision(ProvisionRequest {
                 handle: SecretHandle::parse("device/root/1").unwrap(),
