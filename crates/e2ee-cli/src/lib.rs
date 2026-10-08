@@ -470,7 +470,9 @@ fn run(
                 .strip_suffix("\r\n")
                 .or_else(|| text.strip_suffix('\n'))
                 .unwrap_or(text);
-            if uri.is_empty() || uri.bytes().any(|byte| matches!(byte, b'\n' | b'\r' | 0)) {
+            if uri.is_empty()
+                || uri.bytes().any(|byte| matches!(byte, b'\n' | b'\r' | 0))
+            {
                 return Err(CliError::InvalidInput);
             }
             let card = EndpointCard::from_uri(uri)?;
