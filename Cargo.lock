@@ -278,6 +278,7 @@ dependencies = [
  "e2ee-capsule",
  "e2ee-client",
  "e2ee-core",
+ "e2ee-file",
  "e2ee-keystore",
  "e2ee-storage",
  "e2ee-transport",
