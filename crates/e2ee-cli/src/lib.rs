@@ -576,7 +576,10 @@ fn run(
             let encoded = encode_delivery(&delivery, options.delivery_format)?;
             check_interrupted()?;
             write_new_private(&destination, &encoded)?;
-            writeln!(output, "Encrypted personal note saved to a new private file.")?;
+            writeln!(
+                output,
+                "Encrypted personal note saved to a new private file."
+            )?;
             false
         }
         Command::OpenNote(context, source, destination) => {
@@ -597,7 +600,10 @@ fn run(
             )?;
             check_interrupted()?;
             write_new_private(&destination, opened.text().as_bytes())?;
-            writeln!(output, "Verified personal note saved to a new private file.")?;
+            writeln!(
+                output,
+                "Verified personal note saved to a new private file."
+            )?;
             false
         }
         Command::Init(_) => return Err(CliError::Usage),
