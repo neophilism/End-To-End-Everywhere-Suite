@@ -4,6 +4,7 @@ members = [
   "crates/e2ee-core",
   "crates/e2ee-directory",
   "crates/e2ee-enrollment",
+  "crates/e2ee-file",
   "crates/e2ee-keystore",
   "crates/e2ee-message",
   "crates/e2ee-recovery",
