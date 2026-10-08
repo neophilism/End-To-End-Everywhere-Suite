@@ -6,7 +6,11 @@ license.workspace = true
 description = "Fail-closed secure key-store contracts for End-To-End Everywhere Suite"
 
 [dependencies]
+argon2 = { version = "=0.5.3", default-features = false, features = ["alloc", "zeroize"] }
+chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 e2ee-core = { path = "../e2ee-core" }
+getrandom = "=0.4.3"
+zeroize = "=1.8.2"
 
 [lints]
 workspace = true
