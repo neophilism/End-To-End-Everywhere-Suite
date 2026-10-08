@@ -42,3 +42,6 @@ The [persistent client archive](docs/client-archives.md) now restores vault,
 endpoint keys and contact trust together, with explicit anchored or password-only policies.
 The [local CLI](docs/cli.md) now creates persistent identities and manages verified
 contacts and unlock credentials with hidden terminal prompts.
+
+The local CLI supports explicitly selected ASCII-armored signed text and
+attachment delivery for email-friendly transport; see [CLI guidance](docs/cli.md).
