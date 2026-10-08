@@ -18,7 +18,8 @@ impl Directory {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("e2ee-self-file-{}-{stamp}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("e2ee-self-file-{}-{stamp}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
         Self(root)
     }
@@ -70,7 +71,13 @@ fn protect(state: &Path, mode: Option<&str>, source: &Path, target: &Path) -> Ou
         ],
     )
 }
-fn restore(state: &Path, mode: Option<&str>, context: &str, input: &Path, output: &Path) -> Output {
+fn restore(
+    state: &Path,
+    mode: Option<&str>,
+    context: &str,
+    input: &Path,
+    output: &Path,
+) -> Output {
     run(
         state,
         mode,
@@ -110,13 +117,7 @@ fn local_file_protection_authenticates_sender_context_and_destination() {
     assert!(!wrong_identity.status.success());
     assert!(!output.exists());
 
-    assert_ok(&restore(
-        &me,
-        None,
-        "personal-file-v1",
-        &encrypted,
-        &output,
-    ));
+    assert_ok(&restore(&me, None, "personal-file-v1", &encrypted, &output));
     assert_eq!(fs::read(&output).unwrap(), plaintext);
     assert_eq!(
         fs::metadata(&output).unwrap().permissions().mode() & 0o777,
