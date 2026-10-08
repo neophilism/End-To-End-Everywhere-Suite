@@ -70,16 +70,28 @@ fn trust(one: &Path, other: &Path, id: &str) {
 }
 
 fn send(alice: &Path, input: &Path, output: &Path) -> Output {
-    cli(alice, &[
-        "seal-text", "bob", "personal-mail-v1",
-        input.to_str().unwrap(), output.to_str().unwrap(),
-    ])
+    cli(
+        alice,
+        &[
+            "seal-text",
+            "bob",
+            "personal-mail-v1",
+            input.to_str().unwrap(),
+            output.to_str().unwrap(),
+        ],
+    )
 }
 fn open(bob: &Path, context: &str, encrypted: &Path, output: &Path) -> Output {
-    cli(bob, &[
-        "open-text", "alice", context,
-        encrypted.to_str().unwrap(), output.to_str().unwrap(),
-    ])
+    cli(
+        bob,
+        &[
+            "open-text",
+            "alice",
+            context,
+            encrypted.to_str().unwrap(),
+            output.to_str().unwrap(),
+        ],
+    )
 }
 
 #[test]
@@ -105,7 +117,7 @@ fn signed_text_roundtrip_tampering_wrong_context_and_existing_destination() {
     ok(&open(&bob, "personal-mail-v1", &encrypted, &output));
     assert_eq!(
         fs::read_to_string(&output).unwrap(),
-        "Private multi-line\\nmessage."
+        "Private multi-line\nmessage."
     );
     assert_eq!(
         fs::metadata(&output).unwrap().permissions().mode() & 0o777,
@@ -144,11 +156,9 @@ fn unverified_revoked_and_oversize_input_fail_without_output() {
     assert!(!encrypted.exists());
     trust(&alice, &bob, "bob");
     ok(&cli(&alice, &["revoke", "bob"]));
-    assert!(!cli(&alice, &["seal-text", "bob", "mail-v1",
-        input.to_str().unwrap(), encrypted.to_str().unwrap()]).status.success());
+    assert!(!send(&alice, &input, &encrypted).status.success());
     assert!(!encrypted.exists());
     fs::write(&input, vec![b'x'; 4 * 1024 * 1024 + 1]).unwrap();
-    assert!(!cli(&alice, &["seal-text", "bob", "mail-v1",
-        input.to_str().unwrap(), encrypted.to_str().unwrap()]).status.success());
+    assert!(!send(&alice, &input, &encrypted).status.success());
     assert!(!encrypted.exists());
 }
