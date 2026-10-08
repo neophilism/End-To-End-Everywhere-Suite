@@ -19,6 +19,7 @@ use hpke::{
 use std::fmt;
 use zeroize::Zeroizing;
 
+pub mod local;
 pub mod recipients;
 use recipients::{bind_recipient_stanzas, multi_recipient_context, validate_recipient_keys};
 

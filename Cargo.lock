@@ -275,6 +275,8 @@ version = "0.1.0"
 dependencies = [
  "chacha20poly1305",
  "e2ee-capsule",
+ "e2ee-core",
+ "e2ee-keystore",
  "getrandom",
  "hpke",
  "sha2",
@@ -286,6 +288,8 @@ name = "e2ee-provenance"
 version = "0.1.0"
 dependencies = [
  "e2ee-capsule",
+ "e2ee-core",
+ "e2ee-keystore",
  "e2ee-message",
  "ed25519-dalek",
  "getrandom",

@@ -7,6 +7,8 @@ description = "Context-bound detached Ed25519 signatures for E2E Capsules"
 
 [dependencies]
 e2ee-capsule = { path = "../e2ee-capsule" }
+e2ee-core = { path = "../e2ee-core" }
+e2ee-keystore = { path = "../e2ee-keystore" }
 ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["alloc", "fast", "zeroize"] }
 getrandom = "=0.4.3"
 sha2 = "=0.11.0"

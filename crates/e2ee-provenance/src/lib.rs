@@ -9,6 +9,8 @@ use sha2::{Digest, Sha256};
 use std::fmt;
 use zeroize::Zeroizing;
 
+pub mod local;
+
 pub const SIGNATURE_ALGORITHM: &str = "ALG-ED25519";
 pub const RECORD_VERSION: u16 = 1;
 const MAGIC: &[u8; 4] = b"E2CS";

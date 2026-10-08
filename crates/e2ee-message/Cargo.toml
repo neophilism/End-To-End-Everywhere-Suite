@@ -8,6 +8,8 @@ description = "Multi-recipient encrypted text/message Capsules for End-To-End Ev
 [dependencies]
 chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 e2ee-capsule = { path = "../e2ee-capsule" }
+e2ee-core = { path = "../e2ee-core" }
+e2ee-keystore = { path = "../e2ee-keystore" }
 getrandom = "=0.4.3"
 hpke = { version = "=0.14.1", default-features = false, features = ["alloc", "chacha", "getrandom", "x25519"] }
 sha2 = "=0.11.0"
