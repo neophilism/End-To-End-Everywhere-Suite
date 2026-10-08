@@ -15,7 +15,7 @@ use e2ee_keystore::{
     SOFTWARE_VAULT_PROFILE,
 };
 use e2ee_storage::{PrivateStateStore, StorageError};
-use e2ee_transport::Delivery;
+use e2ee_transport::{decode_armored, encode_armored, Delivery};
 use std::{
     ffi::OsString,
     fmt,
@@ -31,9 +31,10 @@ static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_DELIVERY_BYTES: usize = 40 * 1024 * 1024;
 const MAX_FILE_BYTES: usize = 32 * 1024 * 1024;
+const MAX_ARMORED_DELIVERY_BYTES: usize = 56 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
-Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] COMMAND\n\n\
+Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor] COMMAND\n\n\
 Commands:\n\
   init ENDPOINT                 Create a new local encrypted identity\n\
   identity                      Show endpoint and complete fingerprint\n\
@@ -57,7 +58,9 @@ Successful state saves print the new public ANCHOR token to stderr; retain it\n\
 independently only after the save. Native Windows file storage is not yet supported.\n\
 Text INPUT is a local file. OUTPUT must not exist and is created private (0600)\n\
 on Unix. Neither passphrases nor plaintext are printed to stdout. CONTEXT\n\
-is a shared ASCII application purpose; both peers must use the same value.\n";
+is a shared ASCII application purpose; both peers must use the same value.\n\
+--armor explicitly selects ASCII-armored E2E deliveries on seal/open commands;\n\
+binary .e2ed remains the default. Do not paste unencrypted files into email.\n";
 
 enum Command {
     Init(EndpointId),
@@ -75,10 +78,17 @@ enum Command {
     OpenFile(EndpointId, String, PathBuf, PathBuf),
 }
 
+#[derive(Clone, Copy)]
+enum DeliveryFormat {
+    Binary,
+    Armored,
+}
+
 struct Options {
     state: PathBuf,
     anchor: Option<ArchiveAnchor>,
     password_stdin: bool,
+    delivery_format: DeliveryFormat,
     command: Command,
 }
 
@@ -211,6 +221,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
     let mut password_only = false;
     let mut anchor = None;
     let mut password_stdin = false;
+    let mut armor = false;
     let mut offset = 0;
     while let Some(flag) = arguments.get(offset).filter(|arg| arg.starts_with("--")) {
         offset += 1;
@@ -232,6 +243,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
                 offset += 1;
             }
             "--password-stdin" if !password_stdin => password_stdin = true,
+            "--armor" if !armor => armor = true,
             _ => return Err(CliError::Usage),
         }
     }
@@ -282,10 +294,26 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         ),
         _ => return Err(CliError::Usage),
     };
+    if armor
+        && !matches!(
+            &command,
+            Command::SealText(..)
+                | Command::OpenText(..)
+                | Command::SealFile(..)
+                | Command::OpenFile(..)
+        )
+    {
+        return Err(CliError::Usage);
+    }
     Ok(Options {
         state,
         anchor,
         password_stdin,
+        delivery_format: if armor {
+            DeliveryFormat::Armored
+        } else {
+            DeliveryFormat::Binary
+        },
         command,
     })
 }
@@ -445,9 +473,7 @@ fn run(
                 SignatureMode::Signed { context: &context },
                 now(),
             )?;
-            let encoded = delivery
-                .encode(CapsuleLimits::default())
-                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let encoded = encode_delivery(&delivery, options.delivery_format)?;
             check_interrupted()?;
             write_new_private(&destination, &encoded)?;
             writeln!(
@@ -459,9 +485,7 @@ fn run(
         Command::OpenText(sender, context, source, destination) => {
             // Do not publish a plaintext file until both sender provenance and
             // recipient authentication succeed under the current contact book.
-            let encoded = read_bounded_file(&source, MAX_DELIVERY_BYTES)?;
-            let delivery = Delivery::decode(&encoded, CapsuleLimits::default())
-                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let delivery = decode_delivery(&source, options.delivery_format)?;
             let (session, contacts) = client.session_and_contacts(now())?;
             let opened =
                 session.open_text_from_contact(contacts, &sender, &context, &delivery, now())?;
@@ -476,28 +500,24 @@ fn run(
                 .file_name()
                 .and_then(|name| name.to_str())
                 .ok_or(CliError::InvalidInput)?;
-            let options = FileOptions::new(filename, "application/octet-stream");
+            let file_options = FileOptions::new(filename, "application/octet-stream");
             let (session, contacts) = client.session_and_contacts(now())?;
             let delivery = session.encrypt_file_to_contacts(
                 contacts,
                 &ids,
-                &options,
+                &file_options,
                 &payload,
                 SignatureMode::Signed { context: &context },
                 now(),
             )?;
-            let encoded = delivery
-                .encode(CapsuleLimits::default())
-                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let encoded = encode_delivery(&delivery, options.delivery_format)?;
             check_interrupted()?;
             write_new_private(&destination, &encoded)?;
             writeln!(output, "Signed encrypted file saved to a private delivery.")?;
             false
         }
         Command::OpenFile(sender, context, source, destination) => {
-            let encoded = read_bounded_file(&source, MAX_DELIVERY_BYTES)?;
-            let delivery = Delivery::decode(&encoded, CapsuleLimits::default())
-                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let delivery = decode_delivery(&source, options.delivery_format)?;
             let (session, contacts) = client.session_and_contacts(now())?;
             let pinned = contacts
                 .verified_contact(&sender)
@@ -531,6 +551,36 @@ fn run(
 
 /// Read exactly one regular local file and fail on oversized content. Secret
 /// buffers are zeroized when they leave scope, including on validation errors.
+fn encode_delivery(delivery: &Delivery, format: DeliveryFormat) -> Result<Vec<u8>, CliError> {
+    let limits = CapsuleLimits::default();
+    match format {
+        DeliveryFormat::Binary => delivery.encode(limits),
+        DeliveryFormat::Armored => encode_armored(delivery, limits).map(String::into_bytes),
+    }
+    .map_err(|error| CliError::Client(ClientError::Transport(error)))
+}
+
+fn decode_delivery(path: &Path, format: DeliveryFormat) -> Result<Delivery, CliError> {
+    let maximum = match format {
+        DeliveryFormat::Binary => MAX_DELIVERY_BYTES,
+        DeliveryFormat::Armored => MAX_ARMORED_DELIVERY_BYTES,
+    };
+    let encoded = read_bounded_file(path, maximum)?;
+    let limits = CapsuleLimits::default();
+    match format {
+        DeliveryFormat::Binary => Delivery::decode(&encoded, limits),
+        DeliveryFormat::Armored => {
+            let text = std::str::from_utf8(&encoded).map_err(|_| {
+                CliError::Client(ClientError::Transport(
+                    e2ee_transport::TransportError::InvalidEncoding,
+                ))
+            })?;
+            decode_armored(text, limits)
+        }
+    }
+    .map_err(|error| CliError::Client(ClientError::Transport(error)))
+}
+
 fn read_bounded_file(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, CliError> {
     let file = File::open(path)?;
     if !file.metadata()?.is_file() {

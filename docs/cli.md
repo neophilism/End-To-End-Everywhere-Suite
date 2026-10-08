@@ -95,3 +95,31 @@ Changed, unverified, or revoked sender/recipient contacts fail closed.
 This is not a streaming API for larger files. The source filename, explicit
 output paths, filesystem snapshots, and file lengths may remain visible to local
 systems. E2EE does not protect plaintext files at rest outside the vault.
+
+## Email-friendly ASCII-armored deliveries
+
+Add `--armor` **before** a seal/open command to select a strictly parsed,
+copyable text representation of the same authenticated encrypted Capsule.
+Both endpoints must explicitly select armor; binary `.e2ed` remains the
+default. For example:
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only --armor seal-text bob mail-v1 ./draft.txt ./encrypted.asc
+e2ee --state ./bob-private --software-vault --password-only --armor open-text alice mail-v1 ./encrypted.asc ./opened.txt
+e2ee --state ./alice-private --software-vault --password-only --armor seal-file bob file-share-v1 ./report.pdf ./report.asc
+e2ee --state ./bob-private --software-vault --password-only --armor open-file alice file-share-v1 ./report.asc ./received.pdf
+```
+
+The armor is framed as `-----BEGIN E2E DELIVERY-----` and
+`-----END E2E DELIVERY-----`; it represents **ciphertext**, not plaintext.
+It can be placed in an email body or other text channel, provided that the
+entire envelope remains intact. Sending platforms may expose the contact
+roster, lengths, subjects, timestamps or other routing metadata outside
+the payload. Do not include the plaintext draft in the email and never
+interpret the armor's presence alone as proof of sender authenticity:
+`open-*` still requires an independently verified sender and exact context.
+
+The `--armor` option is rejected on identity, contact and password commands;
+it never silently guesses formats. Input size is bounded, output files must
+not already exist, and decoded ciphertext is not published before signature
+verification and authenticated opening. Encrypted output remains 0600 on Unix.
