@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Single-recipient text/message encryption for E2E Capsules.
+//! Single- and multi-recipient text/message encryption for E2E Capsules.
 //!
 //! This module uses the exact E2EESA-recommended RFC 9180 HPKE suite for
 //! recipient key wrapping, plus a fresh random content-encryption key for the
@@ -17,6 +17,10 @@ use hpke::{
     Serializable,
 };
 use std::fmt;
+use zeroize::Zeroizing;
+
+pub mod recipients;
+use recipients::{bind_recipient_stanzas, multi_recipient_context, validate_recipient_keys};
 
 type Kem = X25519HkdfSha256;
 type HpkeAead = HpkeChaCha20Poly1305;
@@ -55,11 +59,12 @@ impl fmt::Debug for RecipientPublicKey {
 /// encrypted local state protected by the selected e2ee-keystore profile.
 /// Dropping this object overwrites its serialized key bytes.
 pub struct RecipientPrivateKey {
-    encoded_private_key: Vec<u8>,
+    encoded_private_key: Zeroizing<Vec<u8>>,
 }
 
 impl RecipientPrivateKey {
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, MessageError> {
+        let bytes = Zeroizing::new(bytes);
         let _ = <Kem as KemTrait>::PrivateKey::from_bytes(&bytes)
             .map_err(|_| MessageError::InvalidPrivateKey)?;
         Ok(Self {
@@ -76,12 +81,6 @@ impl RecipientPrivateKey {
 impl fmt::Debug for RecipientPrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("RecipientPrivateKey([REDACTED])")
-    }
-}
-
-impl Drop for RecipientPrivateKey {
-    fn drop(&mut self) {
-        self.encoded_private_key.fill(0);
     }
 }
 
@@ -114,6 +113,8 @@ pub enum MessageError {
     InvalidRecipientHint,
     UnsupportedSuite,
     RecipientCount,
+    DuplicateRecipientHint,
+    DuplicateRecipientKey,
     RecipientHintMismatch,
     HpkeSeal,
     HpkeOpen,
@@ -136,7 +137,9 @@ impl fmt::Display for MessageError {
             Self::InvalidPrivateKey => "recipient HPKE private key is invalid",
             Self::InvalidRecipientHint => "recipient hint is invalid",
             Self::UnsupportedSuite => "capsule uses an unsupported cryptographic suite",
-            Self::RecipientCount => "text-message profile requires exactly one recipient stanza",
+            Self::RecipientCount => "recipient count is outside the supported range",
+            Self::DuplicateRecipientHint => "recipient hints must be unique",
+            Self::DuplicateRecipientKey => "recipient endpoint keys must be unique",
             Self::RecipientHintMismatch => {
                 "capsule recipient hint does not match expected recipient"
             }
@@ -163,7 +166,7 @@ pub fn generate_recipient_keypair() -> RecipientKeyPair {
     RecipientKeyPair {
         public_key: public_key.to_bytes().as_slice().to_vec(),
         private_key: RecipientPrivateKey {
-            encoded_private_key: private_key.to_bytes().as_slice().to_vec(),
+            encoded_private_key: Zeroizing::new(private_key.to_bytes().as_slice().to_vec()),
         },
     }
 }
@@ -229,17 +232,27 @@ pub fn encrypt_text(
     text: &str,
     content_type: Option<&str>,
 ) -> Result<Capsule, MessageError> {
+    encrypt_text_for_recipients(std::slice::from_ref(recipient), text, content_type)
+}
+
+/// Encrypt once and independently wrap the fresh content key for each endpoint.
+/// The recipient roster is immutable after encryption and is not an MLS group.
+pub fn encrypt_text_for_recipients(
+    recipients: &[RecipientPublicKey],
+    text: &str,
+    content_type: Option<&str>,
+) -> Result<Capsule, MessageError> {
     let text_bytes = text.as_bytes();
     if text_bytes.len() > MAX_TEXT_BYTES {
         return Err(MessageError::TextTooLarge);
     }
-    validate_recipient_hint(&recipient.recipient_hint)?;
+    validate_recipient_keys(recipients)?;
 
     let content_type = content_type.unwrap_or(DEFAULT_CONTENT_TYPE);
     validate_content_type(content_type)?;
 
-    let mut content_key = [0_u8; CONTENT_KEY_LEN];
-    fill_random(&mut content_key)?;
+    let mut content_key = Zeroizing::new([0_u8; CONTENT_KEY_LEN]);
+    fill_random(&mut *content_key)?;
 
     let mut message_id = [0_u8; MESSAGE_ID_LEN];
     fill_random(&mut message_id)?;
@@ -256,7 +269,17 @@ pub fn encrypt_text(
         }
     }
 
-    let base_aad = base_context(&recipient.recipient_hint);
+    let hints: Vec<_> = recipients
+        .iter()
+        .map(|r| r.recipient_hint.as_slice())
+        .collect();
+    let wrap_context = message_context(&hints)?;
+    let wrap_aad = domain_aad(&wrap_context, b"content-key-wrap", None);
+    let stanzas = recipients
+        .iter()
+        .map(|recipient| wrap_key_for_recipient(recipient, &*content_key, HPKE_INFO, &wrap_aad))
+        .collect::<Result<Vec<_>, _>>()?;
+    let base_aad = content_context(&wrap_context, &stanzas);
     let header_aad = domain_aad(&base_aad, b"protected-header", None);
     let payload_aad = domain_aad(&base_aad, b"message-payload", Some(&message_id));
 
@@ -268,14 +291,9 @@ pub fn encrypt_text(
     )?;
     let payload_ciphertext = seal_content(&content_key, &payload_nonce, text_bytes, &payload_aad)?;
 
-    let wrap_aad = domain_aad(&base_aad, b"content-key-wrap", None);
-    let stanza = wrap_key_for_recipient(recipient, &content_key, HPKE_INFO, &wrap_aad)?;
-
-    content_key.fill(0);
-
     let capsule = Capsule {
         suite_id: E2EESA_MESSAGE_SUITE.to_owned(),
-        recipients: vec![stanza],
+        recipients: stanzas,
         protected_header_ciphertext: prefix_nonce(header_nonce, protected_header_ciphertext),
         payload_ciphertext: prefix_nonce(payload_nonce, payload_ciphertext),
     };
@@ -298,34 +316,50 @@ pub fn decrypt_text(
     if capsule.suite_id != E2EESA_MESSAGE_SUITE {
         return Err(MessageError::UnsupportedSuite);
     }
-    if capsule.recipients.len() != 1 {
-        return Err(MessageError::RecipientCount);
-    }
-
     validate_recipient_hint(expected_recipient_hint)?;
-    let stanza = &capsule.recipients[0];
-    if stanza.recipient_hint != expected_recipient_hint {
-        return Err(MessageError::RecipientHintMismatch);
-    }
-
-    let base_aad = base_context(expected_recipient_hint);
-    let wrap_aad = domain_aad(&base_aad, b"content-key-wrap", None);
-    let mut content_key = unwrap_key_for_recipient(
+    let stanza = capsule
+        .recipients
+        .iter()
+        .find(|s| s.recipient_hint == expected_recipient_hint)
+        .ok_or(MessageError::RecipientHintMismatch)?;
+    let hints: Vec<_> = capsule
+        .recipients
+        .iter()
+        .map(|s| s.recipient_hint.as_slice())
+        .collect();
+    let wrap_context = message_context(&hints)?;
+    let base_aad = content_context(&wrap_context, &capsule.recipients);
+    let wrap_aad = domain_aad(&wrap_context, b"content-key-wrap", None);
+    let content_key = Zeroizing::new(unwrap_key_for_recipient(
         expected_recipient_hint,
         recipient_private_key,
         stanza,
         HPKE_INFO,
         &wrap_aad,
-    )?;
+    )?);
 
     if content_key.len() != CONTENT_KEY_LEN {
-        content_key.fill(0);
         return Err(MessageError::InvalidContentKey);
     }
 
-    let result = decrypt_with_content_key(&content_key, capsule, &base_aad);
-    content_key.fill(0);
-    result
+    decrypt_with_content_key(&content_key, capsule, &base_aad)
+}
+
+fn message_context(hints: &[&[u8]]) -> Result<Vec<u8>, MessageError> {
+    if hints.len() == 1 {
+        validate_recipient_hint(hints[0])?;
+        Ok(base_context(hints[0]))
+    } else {
+        multi_recipient_context(b"E2EC-MSG-MULTI-V1", hints)
+    }
+}
+
+fn content_context(base: &[u8], stanzas: &[RecipientStanza]) -> Vec<u8> {
+    if stanzas.len() == 1 {
+        base.to_vec()
+    } else {
+        bind_recipient_stanzas(base, stanzas)
+    }
 }
 
 fn decrypt_with_content_key(
@@ -622,5 +656,96 @@ mod tests {
         let second_open = decrypt_text(&public.recipient_hint, &private, &second).unwrap();
         assert_ne!(first_open.message_id, second_open.message_id);
         assert_ne!(first.payload_ciphertext, second.payload_ciphertext);
+    }
+
+    fn multiple_recipients() -> (Vec<RecipientPublicKey>, Vec<RecipientPrivateKey>) {
+        (1..=3)
+            .map(|i| {
+                let (mut public, private) = recipient();
+                public.recipient_hint = vec![i; 16];
+                (public, private)
+            })
+            .unzip()
+    }
+
+    #[test]
+    fn every_endpoint_decrypts_the_same_payload_and_message_id() {
+        let (public, private) = multiple_recipients();
+        let capsule = encrypt_text_for_recipients(&public, "all devices: 🌍", None).unwrap();
+        let opened: Vec<_> = public
+            .iter()
+            .zip(&private)
+            .map(|(p, k)| decrypt_text(&p.recipient_hint, k, &capsule).unwrap())
+            .collect();
+        assert_eq!(opened[0], opened[1]);
+        assert_eq!(opened[1], opened[2]);
+        assert_eq!(opened[0].text, "all devices: 🌍");
+        assert_ne!(
+            capsule.recipients[0].wrapped_content_key,
+            capsule.recipients[1].wrapped_content_key
+        );
+    }
+
+    #[test]
+    fn removal_reordering_and_addition_of_recipients_fail_closed() {
+        let (public, private) = multiple_recipients();
+        let original = encrypt_text_for_recipients(&public, "immutable roster", None).unwrap();
+        let mut removed = original.clone();
+        removed.recipients.pop();
+        let mut reordered = original.clone();
+        reordered.recipients.swap(1, 2);
+        let (mut outsider, _) = recipient();
+        outsider.recipient_hint = vec![4; 16];
+        let other = encrypt_text(&outsider, "another message", None).unwrap();
+        let mut added = original.clone();
+        added.recipients.push(other.recipients[0].clone());
+        let mut reduced_to_single = original.clone();
+        reduced_to_single.recipients.truncate(1);
+        for altered in [removed, reordered, added, reduced_to_single] {
+            assert!(decrypt_text(&public[0].recipient_hint, &private[0], &altered).is_err());
+        }
+    }
+
+    #[test]
+    fn other_recipients_wrap_is_authenticated() {
+        let (public, private) = multiple_recipients();
+        let mut capsule = encrypt_text_for_recipients(&public, "bound wrappers", None).unwrap();
+        capsule.recipients[1].wrapped_content_key[0] ^= 1;
+        assert_eq!(
+            decrypt_text(&public[0].recipient_hint, &private[0], &capsule),
+            Err(MessageError::AuthenticationFailed)
+        );
+    }
+
+    #[test]
+    fn duplicate_and_invalid_endpoints_are_rejected() {
+        let (public, _) = multiple_recipients();
+        assert_eq!(
+            encrypt_text_for_recipients(&[], "x", None),
+            Err(MessageError::RecipientCount)
+        );
+        let mut duplicate_hint = public.clone();
+        duplicate_hint[1].recipient_hint = duplicate_hint[0].recipient_hint.clone();
+        assert_eq!(
+            encrypt_text_for_recipients(&duplicate_hint, "x", None),
+            Err(MessageError::DuplicateRecipientHint)
+        );
+        let mut duplicate_key = public.clone();
+        duplicate_key[1].encoded_public_key = duplicate_key[0].encoded_public_key.clone();
+        assert_eq!(
+            encrypt_text_for_recipients(&duplicate_key, "x", None),
+            Err(MessageError::DuplicateRecipientKey)
+        );
+        let mut invalid = public;
+        invalid[1].encoded_public_key = vec![1];
+        assert_eq!(
+            encrypt_text_for_recipients(&invalid, "x", None),
+            Err(MessageError::InvalidPublicKey)
+        );
+        invalid[1].encoded_public_key = vec![0; 32];
+        assert_eq!(
+            encrypt_text_for_recipients(&invalid, "x", None),
+            Err(MessageError::HpkeSeal)
+        );
     }
 }

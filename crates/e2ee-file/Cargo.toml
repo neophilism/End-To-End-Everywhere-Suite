@@ -12,6 +12,7 @@ e2ee-message = { path = "../e2ee-message" }
 getrandom = "=0.4.3"
 serde_json = "=1.0.151"
 sha2 = "=0.11.0"
+zeroize = "=1.8.2"
 
 [lints]
 workspace = true

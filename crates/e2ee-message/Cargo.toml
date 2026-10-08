@@ -3,13 +3,15 @@ name = "e2ee-message"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Single-recipient encrypted text/message Capsules for End-To-End Everywhere Suite"
+description = "Multi-recipient encrypted text/message Capsules for End-To-End Everywhere Suite"
 
 [dependencies]
 chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc"] }
 e2ee-capsule = { path = "../e2ee-capsule" }
 getrandom = "=0.4.3"
 hpke = { version = "=0.14.1", default-features = false, features = ["alloc", "chacha", "getrandom", "x25519"] }
+sha2 = "=0.11.0"
+zeroize = "=1.8.2"
 
 [lints]
 workspace = true
