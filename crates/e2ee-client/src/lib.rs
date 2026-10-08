@@ -18,6 +18,9 @@ use sha2::{Digest, Sha256};
 use std::fmt;
 use zeroize::Zeroizing;
 
+pub mod files;
+pub mod portable;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EndpointCard {
     pub endpoint_id: EndpointId,
@@ -127,6 +130,7 @@ pub enum ClientError {
     Provenance(ProvenanceError),
     Transport(TransportError),
     Vault(VaultError),
+    File(e2ee_file::FileError),
 }
 
 impl fmt::Display for ClientError {
@@ -148,6 +152,7 @@ impl fmt::Display for ClientError {
             Self::Provenance(_) => "Capsule provenance operation failed",
             Self::Transport(_) => "delivery or required sender verification failed",
             Self::Vault(_) => "encrypted local endpoint-state operation failed",
+            Self::File(_) => "Capsule file encryption or decryption failed",
         })
     }
 }
@@ -167,6 +172,7 @@ error_from!(MessageError, Message);
 error_from!(ProvenanceError, Provenance);
 error_from!(TransportError, Transport);
 error_from!(VaultError, Vault);
+error_from!(e2ee_file::FileError, File);
 
 /// Ciphertext-only endpoint state; public-key pins are kept separately.
 #[derive(Debug, Clone, PartialEq, Eq)]
