@@ -18,7 +18,8 @@ impl PrivateTest {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let folder = std::env::temp_dir().join(format!("e2ee-group-{}-{stamp}", std::process::id()));
+        let folder =
+            std::env::temp_dir().join(format!("e2ee-group-{}-{stamp}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&folder).unwrap();
         Self(folder)
     }
@@ -30,10 +31,11 @@ impl Drop for PrivateTest {
 }
 fn run(state: &Path, include_self: bool, args: &[&str]) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_e2ee"));
-    command
-        .arg("--state")
-        .arg(state)
-        .args(["--software-vault", "--password-only", "--password-stdin"]);
+    command.arg("--state").arg(state).args([
+        "--software-vault",
+        "--password-only",
+        "--password-stdin",
+    ]);
     if include_self {
         command.arg("--include-self");
     }
