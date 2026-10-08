@@ -38,3 +38,5 @@ changed and revoked contacts and requires explicit fingerprint re-verification.
 The vault supports [passphrase changes and permanent root-handle retirement](docs/vault-credential-lifecycle.md).
 A [private durable file adapter](docs/private-state-storage.md) now supports whole-record
 atomic commits, exclusive writer locks and stale-write detection on Unix hosts.
+The [persistent client archive](docs/client-archives.md) now restores vault,
+endpoint keys and contact trust together, with explicit anchored or password-only policies.

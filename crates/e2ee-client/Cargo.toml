@@ -13,6 +13,7 @@ e2ee-file = { path = "../e2ee-file" }
 e2ee-keystore = { path = "../e2ee-keystore" }
 e2ee-message = { path = "../e2ee-message" }
 e2ee-provenance = { path = "../e2ee-provenance" }
+e2ee-storage = { path = "../e2ee-storage" }
 e2ee-transport = { path = "../e2ee-transport" }
 sha2 = "=0.11.0"
 zeroize = "=1.8.2"
