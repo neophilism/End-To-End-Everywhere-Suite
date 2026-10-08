@@ -54,9 +54,8 @@ pub struct Argon2idParams {
 
 impl Argon2idParams {
     pub fn validate_rfc9106_recommended_floor(self) -> Result<(), RecoveryError> {
-        let first_recommended = self.memory_kib >= 2 * 1024 * 1024
-            && self.iterations >= 1
-            && self.parallelism >= 4;
+        let first_recommended =
+            self.memory_kib >= 2 * 1024 * 1024 && self.iterations >= 1 && self.parallelism >= 4;
         let second_recommended =
             self.memory_kib >= 64 * 1024 && self.iterations >= 3 && self.parallelism >= 4;
 
@@ -300,8 +299,7 @@ mod tests {
     #[test]
     fn generated_recovery_secret_requires_128_bits() {
         let mut candidate = envelope(BACKUP_USER_SECRET_PROFILE, 1);
-        candidate.recovery_secret_policy.kind =
-            RecoverySecretKind::Generated { entropy_bits: 127 };
+        candidate.recovery_secret_policy.kind = RecoverySecretKind::Generated { entropy_bits: 127 };
         assert_eq!(
             candidate.validate(),
             Err(RecoveryError::WeakGeneratedRecoverySecret)
