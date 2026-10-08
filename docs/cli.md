@@ -244,3 +244,31 @@ retained copy is encrypted, not a plain text log, but is still recoverable
 by anyone who compromises the sender's protected identity keys. It is
 not forward-secret and does not synchronize messages or protect copies
 of plaintext source files.
+
+
+## Group delivery with a verified-recipient file
+
+For repeatable messages or attachments sent to several verified contacts,
+write a **local plaintext** list containing one exact endpoint ID per line.
+LF and CRLF line endings are accepted. Do not include blank lines, inline
+comments, extra spaces or duplicate endpoint IDs. Example `recipients.txt`:
+
+```text
+bob
+carol
+```
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only seal-text-list ./recipients.txt team-v1 ./memo.txt ./team.e2ed
+e2ee --state ./alice-private --software-vault --password-only --include-self seal-file-list ./recipients.txt team-files-v1 ./report.pdf ./report.e2ed
+```
+
+The list is strictly parsed as UTF-8, bounded to 132,096 bytes, and limited
+to 1,024 endpoint names; lower Capsule limits may reject larger batches.
+All recipients must be present and **verified** in the encrypted contact
+book. Revoked, unverified, changed, duplicate or invalid IDs stop the whole
+operation before any delivery is written. A list file is not a trust source:
+it merely selects already-verified contacts. The CLI does not automatically
+persist groups, send network traffic or hide the plaintext list's membership
+from anyone with filesystem access. Explicit `--armor` or `--uri` formats
+are also supported, subject to their output size limits.
