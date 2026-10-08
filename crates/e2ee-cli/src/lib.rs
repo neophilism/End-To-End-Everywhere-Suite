@@ -15,7 +15,9 @@ use e2ee_keystore::{
     SOFTWARE_VAULT_PROFILE,
 };
 use e2ee_storage::{PrivateStateStore, StorageError};
-use e2ee_transport::{decode_armored, encode_armored, Delivery};
+use e2ee_transport::{
+    decode_armored, decode_uri, encode_armored, encode_uri, Delivery, DEFAULT_MAX_URI_BYTES,
+};
 use std::{
     ffi::OsString,
     fmt,
@@ -34,7 +36,7 @@ const MAX_FILE_BYTES: usize = 32 * 1024 * 1024;
 const MAX_ARMORED_DELIVERY_BYTES: usize = 56 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
-Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor] COMMAND\n\n\
+Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor | --uri] COMMAND\n\n\
 Commands:\n\
   init ENDPOINT                 Create a new local encrypted identity\n\
   identity                      Show endpoint and complete fingerprint\n\
@@ -60,7 +62,9 @@ Text INPUT is a local file. OUTPUT must not exist and is created private (0600)\
 on Unix. Neither passphrases nor plaintext are printed to stdout. CONTEXT\n\
 is a shared ASCII application purpose; both peers must use the same value.\n\
 --armor explicitly selects ASCII-armored E2E deliveries on seal/open commands;\n\
-binary .e2ed remains the default. Do not paste unencrypted files into email.\n";
+binary .e2ed remains the default. --uri selects a bounded local handoff\n\
+representation for small encrypted Capsules (not a web URL). Never paste\n\
+plain text or private credential material into an email or web address.\n";
 
 enum Command {
     Init(EndpointId),
@@ -82,6 +86,7 @@ enum Command {
 enum DeliveryFormat {
     Binary,
     Armored,
+    LocalUri,
 }
 
 struct Options {
@@ -222,6 +227,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
     let mut anchor = None;
     let mut password_stdin = false;
     let mut armor = false;
+    let mut uri = false;
     let mut offset = 0;
     while let Some(flag) = arguments.get(offset).filter(|arg| arg.starts_with("--")) {
         offset += 1;
@@ -243,7 +249,8 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
                 offset += 1;
             }
             "--password-stdin" if !password_stdin => password_stdin = true,
-            "--armor" if !armor => armor = true,
+            "--armor" if !armor && !uri => armor = true,
+            "--uri" if !uri && !armor => uri = true,
             _ => return Err(CliError::Usage),
         }
     }
@@ -294,16 +301,14 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         ),
         _ => return Err(CliError::Usage),
     };
-    if armor
-        && !matches!(
-            &command,
+    if armor || uri {
+        match &command {
             Command::SealText(..)
-                | Command::OpenText(..)
-                | Command::SealFile(..)
-                | Command::OpenFile(..)
-        )
-    {
-        return Err(CliError::Usage);
+            | Command::OpenText(..)
+            | Command::SealFile(..)
+            | Command::OpenFile(..) => {}
+            _ => return Err(CliError::Usage),
+        }
     }
     Ok(Options {
         state,
@@ -311,6 +316,8 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         password_stdin,
         delivery_format: if armor {
             DeliveryFormat::Armored
+        } else if uri {
+            DeliveryFormat::LocalUri
         } else {
             DeliveryFormat::Binary
         },
@@ -556,6 +563,9 @@ fn encode_delivery(delivery: &Delivery, format: DeliveryFormat) -> Result<Vec<u8
     match format {
         DeliveryFormat::Binary => delivery.encode(limits),
         DeliveryFormat::Armored => encode_armored(delivery, limits).map(String::into_bytes),
+        DeliveryFormat::LocalUri => {
+            encode_uri(delivery, limits, DEFAULT_MAX_URI_BYTES).map(String::into_bytes)
+        }
     }
     .map_err(|error| CliError::Client(ClientError::Transport(error)))
 }
@@ -564,6 +574,7 @@ fn decode_delivery(path: &Path, format: DeliveryFormat) -> Result<Delivery, CliE
     let maximum = match format {
         DeliveryFormat::Binary => MAX_DELIVERY_BYTES,
         DeliveryFormat::Armored => MAX_ARMORED_DELIVERY_BYTES,
+        DeliveryFormat::LocalUri => DEFAULT_MAX_URI_BYTES,
     };
     let encoded = read_bounded_file(path, maximum)?;
     let limits = CapsuleLimits::default();
@@ -576,6 +587,14 @@ fn decode_delivery(path: &Path, format: DeliveryFormat) -> Result<Delivery, CliE
                 ))
             })?;
             decode_armored(text, limits)
+        }
+        DeliveryFormat::LocalUri => {
+            let text = std::str::from_utf8(&encoded).map_err(|_| {
+                CliError::Client(ClientError::Transport(
+                    e2ee_transport::TransportError::InvalidEncoding,
+                ))
+            })?;
+            decode_uri(text, limits, DEFAULT_MAX_URI_BYTES)
         }
     }
     .map_err(|error| CliError::Client(ClientError::Transport(error)))
