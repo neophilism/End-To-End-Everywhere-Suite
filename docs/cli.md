@@ -193,3 +193,27 @@ This is standalone file encryption, **not** filesystem-wide encryption,
 automatic local vault storage or a safe file editor. Source and restored
 files are plaintext; protect them and local backups separately. Never
 discard the encrypted identity archive needed to decrypt your files.
+
+
+## File-based contact exchange
+
+Use public contact-card files when moving identities between devices or
+applications without placing an entire contact URI into shell history:
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only card-save ./alice.contact
+e2ee --state ./bob-private --software-vault --password-only import-card ./alice.contact
+e2ee --state ./bob-private --software-vault --password-only contacts
+```
+
+The exported card is **public information** (it contains public identity keys
+and endpoint identifiers, never private keys or vault passwords). The exported
+file is created exclusively with mode 0600 on Unix as a conservative default;
+an existing path is never overwritten. The importer accepts one complete
+`e2ec:v1:` contact record in a bounded UTF-8 file, optionally followed by
+one LF or CRLF line terminator. Extra records and trailing data are rejected.
+
+**Import is observation, not trust.** A newly imported contact remains
+unverified until the complete fingerprint is independently confirmed using
+`verify`. File contents could be substituted in transit. Importing a public
+card never upgrades changed or revoked contacts automatically.
