@@ -217,3 +217,30 @@ one LF or CRLF line terminator. Extra records and trailing data are rejected.
 unverified until the complete fingerprint is independently confirmed using
 `verify`. File contents could be substituted in transit. Importing a public
 card never upgrades changed or revoked contacts automatically.
+
+
+## Retaining your own copy of a shared delivery
+
+When sending an encrypted message or attachment, use `--include-self` to
+add the currently unlocked local identity as an **additional encrypted
+recipient**. All named remote contacts still must be independently verified.
+The receiving contact sees the same signed Capsule, and you can later open
+your exact sent copy with `open-note` or `open-self-file`:
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only --include-self seal-text bob mail-v1 ./draft.txt ./outgoing.e2ed
+e2ee --state ./alice-private --software-vault --password-only open-note mail-v1 ./outgoing.e2ed ./my-sent-copy.txt
+e2ee --state ./bob-private --software-vault --password-only open-text alice mail-v1 ./outgoing.e2ed ./received.txt
+
+e2ee --state ./alice-private --software-vault --password-only --include-self seal-file bob attachment-v1 ./report.pdf ./report.e2ed
+e2ee --state ./alice-private --software-vault --password-only open-self-file attachment-v1 ./report.e2ed ./my-report.pdf
+```
+
+This option is deliberately **opt-in**: default recipient selection is
+unchanged, so a local identity is not silently added to shared deliveries.
+The same endpoint cannot be selected twice. The option is rejected on
+identity, import, open or already-self-encrypted commands. The sender's
+retained copy is encrypted, not a plain text log, but is still recoverable
+by anyone who compromises the sender's protected identity keys. It is
+not forward-secret and does not synchronize messages or protect copies
+of plaintext source files.
