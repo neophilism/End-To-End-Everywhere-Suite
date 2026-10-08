@@ -9,12 +9,14 @@ use chacha20poly1305::{
 };
 use e2ee_capsule::{Capsule, CapsuleLimits};
 use e2ee_message::{
+    recipients::{bind_recipient_stanzas, multi_recipient_context, validate_recipient_keys},
     unwrap_key_for_recipient, wrap_key_for_recipient, RecipientPrivateKey, RecipientPublicKey,
     E2EESA_MESSAGE_SUITE,
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fmt;
+use zeroize::Zeroizing;
 
 pub const ATTACHMENT_PROFILE: &str = "attachment-chunked-aead@0.1.0";
 pub const CONTENT_AEAD: &str = "ALG-CHACHA20-POLY1305";
@@ -144,14 +146,24 @@ pub fn encrypt_file(
     options: &FileOptions,
     plaintext: &[u8],
 ) -> Result<Capsule, FileError> {
+    encrypt_file_for_recipients(std::slice::from_ref(recipient), options, plaintext)
+}
+
+/// One fresh attachment key, independently HPKE-wrapped for every endpoint.
+pub fn encrypt_file_for_recipients(
+    recipients: &[RecipientPublicKey],
+    options: &FileOptions,
+    plaintext: &[u8],
+) -> Result<Capsule, FileError> {
     options.validate()?;
+    validate_recipient_keys(recipients).map_err(|e| FileError::Recipient(e.to_string()))?;
     if plaintext.len() > INLINE_MAX_PAYLOAD_BYTES {
         return Err(FileError::FileTooLargeForInlineCapsule);
     }
 
     let chunk_count = chunk_count(plaintext.len(), options.chunk_size_bytes)?;
-    let mut attachment_key = [0_u8; KEY_LEN];
-    fill_random(&mut attachment_key)?;
+    let mut attachment_key = Zeroizing::new([0_u8; KEY_LEN]);
+    fill_random(&mut *attachment_key)?;
 
     let attachment_id = random_hex_id()?;
     let parent_message_id = random_hex_id()?;
@@ -178,24 +190,33 @@ pub fn encrypt_file(
     manifest.manifest_context_digest = sha256(&manifest_context_json(&manifest)?);
     let manifest_plaintext = manifest_json(&manifest)?;
 
-    let base_context = file_base_context(&recipient.recipient_hint);
+    let hints: Vec<_> = recipients
+        .iter()
+        .map(|r| r.recipient_hint.as_slice())
+        .collect();
+    let wrap_context = file_recipient_context(&hints)?;
+    let wrap_aad = domain_aad(&wrap_context, b"attachment-key-wrap");
+    let stanzas = recipients
+        .iter()
+        .map(|recipient| {
+            wrap_key_for_recipient(recipient, &attachment_key[..], HPKE_INFO, &wrap_aad)
+                .map_err(|e| FileError::Recipient(e.to_string()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let base_context = file_content_context(&wrap_context, &stanzas);
     let manifest_aad = domain_aad(&base_context, b"private-manifest");
     let protected_header_ciphertext = seal(
-        &attachment_key,
+        &attachment_key[..],
         &MANIFEST_NONCE,
         &manifest_plaintext,
         &manifest_aad,
     )?;
 
     let payload_ciphertext = encrypt_chunks(&attachment_key, &manifest, plaintext)?;
-    let wrap_aad = domain_aad(&base_context, b"attachment-key-wrap");
-    let stanza = wrap_key_for_recipient(recipient, &attachment_key, HPKE_INFO, &wrap_aad)
-        .map_err(|error| FileError::Recipient(error.to_string()))?;
-    attachment_key.fill(0);
 
     let capsule = Capsule {
         suite_id: E2EESA_MESSAGE_SUITE.to_owned(),
-        recipients: vec![stanza],
+        recipients: stanzas,
         protected_header_ciphertext,
         payload_ciphertext,
     };
@@ -216,28 +237,53 @@ pub fn decrypt_file(
     if capsule.suite_id != E2EESA_MESSAGE_SUITE {
         return Err(FileError::UnsupportedSuite);
     }
-    if capsule.recipients.len() != 1 {
-        return Err(FileError::InvalidPayload);
-    }
-
-    let base_context = file_base_context(expected_recipient_hint);
-    let wrap_aad = domain_aad(&base_context, b"attachment-key-wrap");
-    let mut attachment_key = unwrap_key_for_recipient(
-        expected_recipient_hint,
-        recipient_private_key,
-        &capsule.recipients[0],
-        HPKE_INFO,
-        &wrap_aad,
-    )
-    .map_err(|error| FileError::Recipient(error.to_string()))?;
+    let stanza = capsule
+        .recipients
+        .iter()
+        .find(|s| s.recipient_hint == expected_recipient_hint)
+        .ok_or_else(|| FileError::Recipient("recipient not found".into()))?;
+    let hints: Vec<_> = capsule
+        .recipients
+        .iter()
+        .map(|s| s.recipient_hint.as_slice())
+        .collect();
+    let wrap_context = file_recipient_context(&hints)?;
+    let base_context = file_content_context(&wrap_context, &capsule.recipients);
+    let wrap_aad = domain_aad(&wrap_context, b"attachment-key-wrap");
+    let attachment_key = Zeroizing::new(
+        unwrap_key_for_recipient(
+            expected_recipient_hint,
+            recipient_private_key,
+            stanza,
+            HPKE_INFO,
+            &wrap_aad,
+        )
+        .map_err(|error| FileError::Recipient(error.to_string()))?,
+    );
     if attachment_key.len() != KEY_LEN {
-        attachment_key.fill(0);
         return Err(FileError::AuthenticationFailed);
     }
 
-    let result = decrypt_with_key(&attachment_key, capsule, &base_context);
-    attachment_key.fill(0);
-    result
+    decrypt_with_key(&attachment_key, capsule, &base_context)
+}
+
+fn file_recipient_context(hints: &[&[u8]]) -> Result<Vec<u8>, FileError> {
+    if hints.len() == 1 {
+        Ok(file_base_context(hints[0]))
+    } else {
+        let mut context = multi_recipient_context(b"E2EC-FILE-MULTI-V1", hints)
+            .map_err(|e| FileError::Recipient(e.to_string()))?;
+        put_bytes(&mut context, ATTACHMENT_PROFILE.as_bytes());
+        Ok(context)
+    }
+}
+
+fn file_content_context(base: &[u8], stanzas: &[e2ee_capsule::RecipientStanza]) -> Vec<u8> {
+    if stanzas.len() == 1 {
+        base.to_vec()
+    } else {
+        bind_recipient_stanzas(base, stanzas)
+    }
 }
 
 fn decrypt_with_key(
@@ -832,5 +878,43 @@ mod tests {
             encrypt_file(&public, &options, b"x"),
             Err(FileError::InvalidFilename)
         );
+    }
+
+    #[test]
+    fn multiple_endpoints_open_one_chunked_file() {
+        let (first, first_key) = recipient();
+        let (mut second, second_key) = recipient();
+        second.recipient_hint = vec![0x22; 16];
+        let public = vec![first, second];
+        let options = FileOptions::new("shared.bin", "application/octet-stream");
+        let data = vec![0xab; 1024 * 1024 + 123];
+        let capsule = encrypt_file_for_recipients(&public, &options, &data).unwrap();
+        let first_open = decrypt_file(&public[0].recipient_hint, &first_key, &capsule).unwrap();
+        let second_open = decrypt_file(&public[1].recipient_hint, &second_key, &capsule).unwrap();
+        assert_eq!(first_open, second_open);
+        assert_eq!(first_open.bytes, data);
+    }
+
+    #[test]
+    fn file_roster_and_other_endpoints_wrap_are_authenticated() {
+        let (first, private) = recipient();
+        let (mut second, _) = recipient();
+        second.recipient_hint = vec![0x22; 16];
+        let public = vec![first, second];
+        let options = FileOptions::new("a.txt", "text/plain");
+        let original = encrypt_file_for_recipients(&public, &options, b"secret").unwrap();
+        let mut changed_wrap = original.clone();
+        changed_wrap.recipients[1].wrapped_content_key[0] ^= 1;
+        assert_eq!(
+            decrypt_file(&public[0].recipient_hint, &private, &changed_wrap),
+            Err(FileError::AuthenticationFailed)
+        );
+        let mut removed = original.clone();
+        removed.recipients.pop();
+        let mut reordered = original;
+        reordered.recipients.swap(0, 1);
+        for altered in [removed, reordered] {
+            assert!(decrypt_file(&public[0].recipient_hint, &private, &altered).is_err());
+        }
     }
 }
