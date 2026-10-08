@@ -1,0 +1,19 @@
+[package]
+name = "e2ee-provenance"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Context-bound detached Ed25519 signatures for E2E Capsules"
+
+[dependencies]
+e2ee-capsule = { path = "../e2ee-capsule" }
+ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["alloc", "fast", "zeroize"] }
+getrandom = "=0.4.3"
+sha2 = "=0.11.0"
+zeroize = "=1.8.2"
+
+[dev-dependencies]
+e2ee-message = { path = "../e2ee-message" }
+
+[lints]
+workspace = true
