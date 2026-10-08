@@ -18,6 +18,7 @@ use sha2::{Digest, Sha256};
 use std::fmt;
 use zeroize::Zeroizing;
 
+pub mod contacts;
 pub mod files;
 pub mod portable;
 
@@ -131,6 +132,7 @@ pub enum ClientError {
     Transport(TransportError),
     Vault(VaultError),
     File(e2ee_file::FileError),
+    Contact(contacts::ContactError),
 }
 
 impl fmt::Display for ClientError {
@@ -153,6 +155,7 @@ impl fmt::Display for ClientError {
             Self::Transport(_) => "delivery or required sender verification failed",
             Self::Vault(_) => "encrypted local endpoint-state operation failed",
             Self::File(_) => "Capsule file encryption or decryption failed",
+            Self::Contact(_) => "contact verification or lifecycle policy failed",
         })
     }
 }
@@ -173,6 +176,7 @@ error_from!(ProvenanceError, Provenance);
 error_from!(TransportError, Transport);
 error_from!(VaultError, Vault);
 error_from!(e2ee_file::FileError, File);
+error_from!(contacts::ContactError, Contact);
 
 /// Ciphertext-only endpoint state; public-key pins are kept separately.
 #[derive(Debug, Clone, PartialEq, Eq)]
