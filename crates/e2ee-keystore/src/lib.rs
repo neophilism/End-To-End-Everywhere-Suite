@@ -10,6 +10,7 @@ use e2ee_core::{ProfileId, ProfileParseError};
 use std::fmt;
 
 pub mod software;
+pub mod state;
 
 pub const PLATFORM_KEYSTORE_PROFILE: &str = "secret-platform-keystore@0.1.0";
 pub const HARDWARE_ISOLATED_PROFILE: &str = "secret-hardware-isolated@0.1.0";

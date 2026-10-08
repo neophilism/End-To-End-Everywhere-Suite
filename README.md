@@ -28,3 +28,5 @@ unsigned deliveries. See [multi-recipient Capsules](docs/multi-recipient-capsule
 Consumer applications and platform keystore adapters are subsequent milestones.
 The explicit [software-vault fallback](docs/software-vault.md) now encrypts
 durable roots and local protocol state with local password-based unlocking.
+Recipient and signing keys support [encrypted endpoint persistence](docs/persistent-endpoint-keys.md)
+bound to their endpoint, algorithm and expected public key.
