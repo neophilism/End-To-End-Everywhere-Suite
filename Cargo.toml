@@ -4,6 +4,7 @@ members = [
   "crates/e2ee-directory",
   "crates/e2ee-enrollment",
   "crates/e2ee-keystore",
+  "crates/e2ee-recovery",
 ]
 resolver = "2"
 
