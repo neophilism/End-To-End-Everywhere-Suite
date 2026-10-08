@@ -52,7 +52,9 @@ Commands:\n\
   seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
   open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\
   seal-note CONTEXT INPUT OUTPUT  Encrypt/sign a personal note to this identity\n\
-  open-note CONTEXT INPUT OUTPUT  Open a signed personal note from this identity\n\n\
+  open-note CONTEXT INPUT OUTPUT  Open a signed personal note from this identity\n\
+  seal-self-file CONTEXT INPUT OUTPUT  Encrypt/sign a local attachment to self\n\
+  open-self-file CONTEXT INPUT OUTPUT  Verify/open a self-encrypted attachment\n\n\
 Passphrases are prompted without terminal echo. --password-stdin explicitly reads\n\
 one line (old/new lines for passwd) from a non-terminal stream ending at EOF.\n\
 No passphrases are accepted as arguments or environment variables.\n\
@@ -84,6 +86,8 @@ enum Command {
     OpenFile(EndpointId, String, PathBuf, PathBuf),
     SealNote(String, PathBuf, PathBuf),
     OpenNote(String, PathBuf, PathBuf),
+    SealSelfFile(String, PathBuf, PathBuf),
+    OpenSelfFile(String, PathBuf, PathBuf),
 }
 
 #[derive(Clone, Copy)]
@@ -313,6 +317,16 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["seal-self-file", context, input, output] => Command::SealSelfFile(
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
+        ["open-self-file", context, input, output] => Command::OpenSelfFile(
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         _ => return Err(CliError::Usage),
     };
     if armor || uri {
@@ -322,7 +336,9 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             | Command::SealFile(..)
             | Command::OpenFile(..)
             | Command::SealNote(..)
-            | Command::OpenNote(..) => {}
+            | Command::OpenNote(..)
+            | Command::SealSelfFile(..)
+            | Command::OpenSelfFile(..) => {}
             _ => return Err(CliError::Usage),
         }
     }
@@ -603,6 +619,57 @@ fn run(
             writeln!(
                 output,
                 "Verified personal note saved to a new private file."
+            )?;
+            false
+        }
+        Command::SealSelfFile(context, source, destination) => {
+            let payload = read_bounded_file(&source, MAX_FILE_BYTES)?;
+            let filename = source
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or(CliError::InvalidInput)?;
+            let file_options = FileOptions::new(filename, "application/octet-stream");
+            let self_card = client.card().clone();
+            let fingerprint = self_card.fingerprint();
+            let pinned = VerifiedContact::confirm(self_card, fingerprint)?;
+            let (session, _) = client.session_and_contacts(now())?;
+            let delivery = session.encrypt_file(
+                &[pinned],
+                &file_options,
+                &payload,
+                SignatureMode::Signed { context: &context },
+                now(),
+            )?;
+            let encoded = encode_delivery(&delivery, options.delivery_format)?;
+            check_interrupted()?;
+            write_new_private(&destination, &encoded)?;
+            writeln!(
+                output,
+                "Self-encrypted attachment saved to a new private file."
+            )?;
+            false
+        }
+        Command::OpenSelfFile(context, source, destination) => {
+            let delivery = decode_delivery(&source, options.delivery_format)?;
+            let self_card = client.card().clone();
+            let fingerprint = self_card.fingerprint();
+            let pinned = VerifiedContact::confirm(self_card, fingerprint)?;
+            let (session, _) = client.session_and_contacts(now())?;
+            let opened = session.open_file(
+                &delivery,
+                SenderPolicy::RequireSignature {
+                    sender: &pinned,
+                    context: &context,
+                },
+                now(),
+            )?;
+            // No embedded filename can choose an output path or trigger
+            // automatic execution; the user picks a new private file.
+            check_interrupted()?;
+            write_new_private(&destination, opened.bytes())?;
+            writeln!(
+                output,
+                "Verified self-encrypted attachment saved to a private file."
             )?;
             false
         }
