@@ -425,10 +425,7 @@ mod tests {
             max_payload_bytes: 64,
             ..CapsuleLimits::default()
         };
-        assert_eq!(
-            capsule().validate(limits),
-            Err(CapsuleError::LimitExceeded)
-        );
+        assert_eq!(capsule().validate(limits), Err(CapsuleError::LimitExceeded));
     }
 
     #[test]
