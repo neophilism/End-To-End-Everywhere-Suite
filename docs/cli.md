@@ -53,5 +53,25 @@ independent trusted system automatically.
 
 Existing directories are never reinitialized, permissions are never silently
 repaired, and contact revocation cannot be cleared by import or ordinary verify.
-See `e2ee --help` for commands. Text/file delivery commands follow this identity
-and lifecycle layer.
+Signed text delivery is available once both sides have imported and independently
+verified one another's complete contact fingerprints. The comma-separated
+recipient list has no whitespace. Text input must be UTF-8 and at most 4 MiB.
+The destination must not already exist, including a symlink.
+
+```sh
+e2ee --state ./alice-private --software-vault --password-only seal-text bob mail-v1 ./draft.txt ./message.e2ed
+e2ee --state ./bob-private --software-vault --password-only open-text alice mail-v1 ./message.e2ed ./opened.txt
+```
+
+Deliver the encrypted `.e2ed` file through any transport; the sender must be
+verified in the receiver's contact book. Signed context is an exact, shared
+application identifier (1-256 printable ASCII bytes); a missing signature,
+unexpected signer, changed or revoked key, or wrong context fails closed.
+No plaintext or passphrase is printed to stdout. The opened output is created
+as a new private (0600) file on Unix and never silently overwrites files.
+Protect plaintext source and output files, disk snapshots, and filesystem backups
+yourself. This workflow does not provide forward secrecy after long-term key
+compromise, message replay prevention, or network delivery. The output directory
+should be private and trusted.
+
+See `e2ee --help` for commands. File-attachment CLI follows this milestone.

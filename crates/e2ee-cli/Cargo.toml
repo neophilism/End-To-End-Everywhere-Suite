@@ -11,10 +11,12 @@ path = "src/main.rs"
 
 [dependencies]
 ctrlc = "=3.5.2"
+e2ee-capsule = { path = "../e2ee-capsule" }
 e2ee-client = { path = "../e2ee-client" }
 e2ee-core = { path = "../e2ee-core" }
 e2ee-keystore = { path = "../e2ee-keystore" }
 e2ee-storage = { path = "../e2ee-storage" }
+e2ee-transport = { path = "../e2ee-transport" }
 rpassword = "=7.5.4"
 zeroize = "=1.8.2"
 

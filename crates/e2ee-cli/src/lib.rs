@@ -2,10 +2,11 @@
 
 //! A short-lived local client. Each invocation unlocks only for its operation.
 
+use e2ee_capsule::CapsuleLimits;
 use e2ee_client::{
     archive::{ArchiveAnchor, ArchiveError, LocalClient, RestorePolicy},
     contacts::ContactStatus,
-    ClientError, EndpointCard, SessionPolicy,
+    ClientError, EndpointCard, SessionPolicy, SignatureMode,
 };
 use e2ee_core::{EndpointId, ProfileId};
 use e2ee_keystore::{
@@ -13,17 +14,21 @@ use e2ee_keystore::{
     SOFTWARE_VAULT_PROFILE,
 };
 use e2ee_storage::{PrivateStateStore, StorageError};
+use e2ee_transport::Delivery;
 use std::{
     ffi::OsString,
     fmt,
+    fs::File,
     io::{self, IsTerminal, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
     time::Instant,
 };
 use zeroize::Zeroizing;
 
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
+const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
+const MAX_DELIVERY_BYTES: usize = 8 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
 Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] COMMAND\n\n\
@@ -36,14 +41,19 @@ Commands:\n\
   verify ENDPOINT FINGERPRINT    Confirm a fingerprint from an independent channel\n\
   revoke ENDPOINT                Block new operations with that contact\n\
   reactivate ENDPOINT FINGERPRINT Explicitly reactivate and verify a contact\n\
-  passwd                        Change the local unlock passphrase\n\n\
+  passwd                        Change the local unlock passphrase\n\
+  seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
+  open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\n\
 Passphrases are prompted without terminal echo. --password-stdin explicitly reads\n\
 one line (old/new lines for passwd) from a non-terminal stream ending at EOF.\n\
 No passphrases are accepted as arguments or environment variables.\n\
 Password-only mode has no independent identity pin or rollback protection.\n\
 Anchored mode requires a separately trusted 140-character hexadecimal anchor.\n\
 Successful state saves print the new public ANCHOR token to stderr; retain it\n\
-independently only after the save. Native Windows file storage is not yet supported.\n";
+independently only after the save. Native Windows file storage is not yet supported.\n\
+Text INPUT is a local file. OUTPUT must not exist and is created private (0600)\n\
+on Unix. Neither passphrases nor plaintext are printed to stdout. CONTEXT\n\
+is a shared ASCII application purpose; both peers must use the same value.\n";
 
 enum Command {
     Init(EndpointId),
@@ -55,6 +65,8 @@ enum Command {
     Revoke(EndpointId),
     Reactivate(EndpointId, [u8; 32]),
     Passwd,
+    SealText(Vec<EndpointId>, String, PathBuf, PathBuf),
+    OpenText(EndpointId, String, PathBuf, PathBuf),
 }
 
 struct Options {
@@ -70,6 +82,10 @@ pub enum CliError {
     InvalidFingerprint,
     InvalidAnchor,
     InvalidPassphrase,
+    InvalidContext,
+    InvalidText,
+    InvalidInput,
+    FileTooLarge,
     ConfirmationMismatch,
     TerminalInput,
     ExtraCredentialInput,
@@ -92,6 +108,10 @@ impl fmt::Display for CliError {
                 f.write_str("trusted anchor must be a valid 140-character hexadecimal token")
             }
             Self::InvalidPassphrase => f.write_str("passphrase must contain 12 to 1024 bytes"),
+            Self::InvalidContext => f.write_str("context must be 1-256 printable ASCII bytes"),
+            Self::InvalidText => f.write_str("text input must be valid UTF-8"),
+            Self::InvalidInput => f.write_str("input must be a regular file"),
+            Self::FileTooLarge => f.write_str("local input exceeds the supported size limit"),
             Self::ConfirmationMismatch => f.write_str("passphrase confirmation did not match"),
             Self::TerminalInput => {
                 f.write_str("--password-stdin requires a non-terminal credential stream")
@@ -163,7 +183,10 @@ pub fn entry(arguments: Vec<OsString>) -> i32 {
             }
             if matches!(
                 error,
-                CliError::Usage | CliError::InvalidFingerprint | CliError::InvalidAnchor
+                CliError::Usage
+                    | CliError::InvalidFingerprint
+                    | CliError::InvalidAnchor
+                    | CliError::InvalidContext
             ) {
                 2
             } else {
@@ -227,6 +250,18 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             decode_hex(fingerprint).map_err(|_| CliError::InvalidFingerprint)?,
         ),
         ["passwd"] => Command::Passwd,
+        ["seal-text", ids, context, input, output] => Command::SealText(
+            recipients(ids)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
+        ["open-text", sender, context, input, output] => Command::OpenText(
+            endpoint(sender)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         _ => return Err(CliError::Usage),
     };
     Ok(Options {
@@ -242,6 +277,24 @@ fn endpoint(value: &str) -> Result<EndpointId, CliError> {
         return Err(CliError::Usage);
     }
     EndpointId::parse(value).map_err(|_| CliError::Usage)
+}
+
+fn application_context(value: &str) -> Result<&str, CliError> {
+    if value.is_empty() || value.len() > 256 || !value.bytes().all(|b| b.is_ascii_graphic()) {
+        return Err(CliError::InvalidContext);
+    }
+    Ok(value)
+}
+
+fn recipients(value: &str) -> Result<Vec<EndpointId>, CliError> {
+    if value.is_empty() {
+        return Err(CliError::Usage);
+    }
+    let ids: Vec<_> = value.split(',').map(endpoint).collect::<Result<_, _>>()?;
+    if ids.is_empty() || ids.len() > 1024 {
+        return Err(CliError::Usage);
+    }
+    Ok(ids)
 }
 
 fn run(
@@ -363,6 +416,42 @@ fn run(
             )?;
             true
         }
+        Command::SealText(ids, context, source, destination) => {
+            let plaintext = read_bounded_file(&source, MAX_TEXT_BYTES)?;
+            let text = std::str::from_utf8(&plaintext).map_err(|_| CliError::InvalidText)?;
+            let (session, contacts) = client.session_and_contacts(now())?;
+            let delivery = session.encrypt_text_to_contacts(
+                contacts,
+                &ids,
+                text,
+                SignatureMode::Signed { context: &context },
+                now(),
+            )?;
+            let encoded = delivery
+                .encode(CapsuleLimits::default())
+                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            check_interrupted()?;
+            write_new_private(&destination, &encoded)?;
+            writeln!(
+                output,
+                "Signed encrypted delivery saved to a new private file."
+            )?;
+            false
+        }
+        Command::OpenText(sender, context, source, destination) => {
+            // Do not publish a plaintext file until both sender provenance and
+            // recipient authentication succeed under the current contact book.
+            let encoded = read_bounded_file(&source, MAX_DELIVERY_BYTES)?;
+            let delivery = Delivery::decode(&encoded, CapsuleLimits::default())
+                .map_err(|error| CliError::Client(ClientError::Transport(error)))?;
+            let (session, contacts) = client.session_and_contacts(now())?;
+            let opened =
+                session.open_text_from_contact(contacts, &sender, &context, &delivery, now())?;
+            check_interrupted()?;
+            write_new_private(&destination, opened.text().as_bytes())?;
+            writeln!(output, "Verified text saved to a new private file.")?;
+            false
+        }
         Command::Init(_) => return Err(CliError::Usage),
     };
     if changed {
@@ -373,6 +462,49 @@ fn run(
     }
     client.lock();
     Ok(())
+}
+
+/// Read exactly one regular local file and fail on oversized content. Secret
+/// buffers are zeroized when they leave scope, including on validation errors.
+fn read_bounded_file(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, CliError> {
+    let file = File::open(path)?;
+    if !file.metadata()?.is_file() {
+        return Err(CliError::InvalidInput);
+    }
+    let mut contents = Zeroizing::new(Vec::new());
+    file.take(limit as u64 + 1).read_to_end(&mut contents)?;
+    if contents.len() > limit {
+        return Err(CliError::FileTooLarge);
+    }
+    Ok(contents)
+}
+
+/// Refuse any existing destination (including symlinks) and never expose
+/// plaintext through stdout or a default-readable output file.
+#[cfg(unix)]
+fn write_new_private(path: &Path, bytes: &[u8]) -> Result<(), CliError> {
+    use std::{fs, fs::OpenOptions, os::unix::fs::OpenOptionsExt};
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?;
+    let result = file.write_all(bytes).and_then(|()| file.sync_all());
+    if let Err(error) = result {
+        drop(file);
+        let _ = fs::remove_file(path);
+        return Err(CliError::Io(error));
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn write_new_private(_path: &Path, _bytes: &[u8]) -> Result<(), CliError> {
+    Err(CliError::Io(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "private output requires a Unix host",
+    )))
 }
 
 fn emit_identity(card: &EndpointCard, output: &mut impl Write) -> Result<(), CliError> {
