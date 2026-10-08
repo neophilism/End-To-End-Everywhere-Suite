@@ -1,0 +1,570 @@
+#![forbid(unsafe_code)]
+
+//! A short-lived local client. Each invocation unlocks only for its operation.
+
+use e2ee_client::{
+    archive::{ArchiveAnchor, ArchiveError, LocalClient, RestorePolicy},
+    contacts::ContactStatus,
+    ClientError, EndpointCard, SessionPolicy,
+};
+use e2ee_core::{EndpointId, ProfileId};
+use e2ee_keystore::{
+    software::{KdfBudget, VaultKdf},
+    SOFTWARE_VAULT_PROFILE,
+};
+use e2ee_storage::{PrivateStateStore, StorageError};
+use std::{
+    ffi::OsString,
+    fmt,
+    io::{self, IsTerminal, Read, Write},
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+    time::Instant,
+};
+use zeroize::Zeroizing;
+
+static INTERRUPTED: AtomicBool = AtomicBool::new(false);
+
+pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
+Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] COMMAND\n\n\
+Commands:\n\
+  init ENDPOINT                 Create a new local encrypted identity\n\
+  identity                      Show endpoint and complete fingerprint\n\
+  card                          Export the public contact URI\n\
+  contacts                      List current contact fingerprints/status\n\
+  import CONTACT_URI            Observe a contact without granting trust\n\
+  verify ENDPOINT FINGERPRINT    Confirm a fingerprint from an independent channel\n\
+  revoke ENDPOINT                Block new operations with that contact\n\
+  reactivate ENDPOINT FINGERPRINT Explicitly reactivate and verify a contact\n\
+  passwd                        Change the local unlock passphrase\n\n\
+Passphrases are prompted without terminal echo. --password-stdin explicitly reads\n\
+one line (old/new lines for passwd) from a non-terminal stream ending at EOF.\n\
+No passphrases are accepted as arguments or environment variables.\n\
+Password-only mode has no independent identity pin or rollback protection.\n\
+Anchored mode requires a separately trusted 140-character hexadecimal anchor.\n\
+Successful state saves print the new public ANCHOR token to stderr; retain it\n\
+independently only after the save. Native Windows file storage is not yet supported.\n";
+
+enum Command {
+    Init(EndpointId),
+    Identity,
+    Card,
+    Contacts,
+    Import(EndpointCard),
+    Verify(EndpointId, [u8; 32]),
+    Revoke(EndpointId),
+    Reactivate(EndpointId, [u8; 32]),
+    Passwd,
+}
+
+struct Options {
+    state: PathBuf,
+    anchor: Option<ArchiveAnchor>,
+    password_stdin: bool,
+    command: Command,
+}
+
+#[derive(Debug)]
+pub enum CliError {
+    Usage,
+    InvalidFingerprint,
+    InvalidAnchor,
+    InvalidPassphrase,
+    ConfirmationMismatch,
+    TerminalInput,
+    ExtraCredentialInput,
+    MissingState,
+    AlreadyExists,
+    Interrupted,
+    SignalHandler,
+    Io(io::Error),
+    Storage(StorageError),
+    Archive(ArchiveError),
+    Client(ClientError),
+}
+
+impl fmt::Display for CliError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Usage => f.write_str("invalid arguments; run e2ee --help"),
+            Self::InvalidFingerprint => f.write_str("supply the complete 64-character fingerprint"),
+            Self::InvalidAnchor => {
+                f.write_str("trusted anchor must be a valid 140-character hexadecimal token")
+            }
+            Self::InvalidPassphrase => f.write_str("passphrase must contain 12 to 1024 bytes"),
+            Self::ConfirmationMismatch => f.write_str("passphrase confirmation did not match"),
+            Self::TerminalInput => {
+                f.write_str("--password-stdin requires a non-terminal credential stream")
+            }
+            Self::ExtraCredentialInput => {
+                f.write_str("credential stream has extra data; expected EOF")
+            }
+            Self::MissingState => {
+                f.write_str("no local client archive exists; initialize a new directory")
+            }
+            Self::AlreadyExists => f.write_str("initialization requires a new state directory"),
+            Self::Interrupted => f.write_str("operation interrupted"),
+            Self::SignalHandler => f.write_str("could not install console cancellation handling"),
+            Self::Io(_) => f.write_str("local client I/O or hidden passphrase input failed"),
+            Self::Storage(error) => error.fmt(f),
+            Self::Archive(error) => error.fmt(f),
+            Self::Client(error) => error.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for CliError {}
+
+macro_rules! error_from {
+    ($type:ty, $variant:ident) => {
+        impl From<$type> for CliError {
+            fn from(value: $type) -> Self {
+                Self::$variant(value)
+            }
+        }
+    };
+}
+error_from!(io::Error, Io);
+error_from!(StorageError, Storage);
+error_from!(ArchiveError, Archive);
+error_from!(ClientError, Client);
+
+pub fn entry(arguments: Vec<OsString>) -> i32 {
+    let result = (|| -> Result<(), CliError> {
+        let arguments: Vec<_> = arguments
+            .into_iter()
+            .map(|arg| arg.into_string().map_err(|_| CliError::Usage))
+            .collect::<Result<_, _>>()?;
+        if arguments.is_empty() || arguments == ["--help"] {
+            io::stdout().lock().write_all(HELP.as_bytes())?;
+            return Ok(());
+        }
+        if arguments == ["--version"] {
+            writeln!(
+                io::stdout().lock(),
+                "e2ee {} (pre-alpha)",
+                env!("CARGO_PKG_VERSION")
+            )?;
+            return Ok(());
+        }
+        let options = parse(&arguments)?;
+        // Let the password reader return and restore terminal settings after
+        // its Ctrl-C event instead of terminating in the middle of raw mode.
+        ctrlc::try_set_handler(|| INTERRUPTED.store(true, Ordering::SeqCst))
+            .map_err(|_| CliError::SignalHandler)?;
+        run(options, &mut io::stdout().lock(), &mut io::stderr().lock())
+    })();
+    match result {
+        Ok(()) => 0,
+        Err(error) => {
+            let _ = writeln!(io::stderr().lock(), "e2ee: {error}");
+            if matches!(error, CliError::Interrupted) {
+                return 130;
+            }
+            if matches!(
+                error,
+                CliError::Usage | CliError::InvalidFingerprint | CliError::InvalidAnchor
+            ) {
+                2
+            } else {
+                1
+            }
+        }
+    }
+}
+
+fn parse(arguments: &[String]) -> Result<Options, CliError> {
+    if arguments.len() > 32 || arguments.iter().any(|arg| arg.len() > 4096) {
+        return Err(CliError::Usage);
+    }
+    let mut state = None;
+    let mut software = false;
+    let mut password_only = false;
+    let mut anchor = None;
+    let mut password_stdin = false;
+    let mut offset = 0;
+    while let Some(flag) = arguments.get(offset).filter(|arg| arg.starts_with("--")) {
+        offset += 1;
+        match flag.as_str() {
+            "--state" if state.is_none() => {
+                let value = arguments.get(offset).ok_or(CliError::Usage)?;
+                if value.is_empty() || value.starts_with("--") {
+                    return Err(CliError::Usage);
+                }
+                state = Some(PathBuf::from(value));
+                offset += 1;
+            }
+            "--software-vault" if !software => software = true,
+            "--password-only" if !password_only && anchor.is_none() => password_only = true,
+            "--anchor" if anchor.is_none() && !password_only => {
+                let value = arguments.get(offset).ok_or(CliError::Usage)?;
+                let bytes = decode_hex::<70>(value).map_err(|_| CliError::InvalidAnchor)?;
+                anchor = Some(ArchiveAnchor::decode(&bytes).map_err(|_| CliError::InvalidAnchor)?);
+                offset += 1;
+            }
+            "--password-stdin" if !password_stdin => password_stdin = true,
+            _ => return Err(CliError::Usage),
+        }
+    }
+    if !software || (!password_only && anchor.is_none()) {
+        return Err(CliError::Usage);
+    }
+    let state = state.ok_or(CliError::Usage)?;
+    let args: Vec<_> = arguments[offset..].iter().map(String::as_str).collect();
+    let command = match args.as_slice() {
+        ["init", id] if anchor.is_none() => Command::Init(endpoint(id)?),
+        ["identity"] => Command::Identity,
+        ["card"] => Command::Card,
+        ["contacts"] => Command::Contacts,
+        ["import", uri] => Command::Import(EndpointCard::from_uri(uri)?),
+        ["verify", id, fingerprint] => Command::Verify(
+            endpoint(id)?,
+            decode_hex(fingerprint).map_err(|_| CliError::InvalidFingerprint)?,
+        ),
+        ["revoke", id] => Command::Revoke(endpoint(id)?),
+        ["reactivate", id, fingerprint] => Command::Reactivate(
+            endpoint(id)?,
+            decode_hex(fingerprint).map_err(|_| CliError::InvalidFingerprint)?,
+        ),
+        ["passwd"] => Command::Passwd,
+        _ => return Err(CliError::Usage),
+    };
+    Ok(Options {
+        state,
+        anchor,
+        password_stdin,
+        command,
+    })
+}
+
+fn endpoint(value: &str) -> Result<EndpointId, CliError> {
+    if value.len() > 128 {
+        return Err(CliError::Usage);
+    }
+    EndpointId::parse(value).map_err(|_| CliError::Usage)
+}
+
+fn run(
+    options: Options,
+    output: &mut impl Write,
+    diagnostics: &mut impl Write,
+) -> Result<(), CliError> {
+    let clock = Instant::now();
+    let now = || u64::try_from(clock.elapsed().as_millis()).unwrap_or(u64::MAX);
+    let mut passwords = Passwords::new(options.password_stdin)?;
+    if let Command::Init(endpoint) = options.command {
+        if options.state.try_exists()? {
+            return Err(CliError::AlreadyExists);
+        }
+        let passphrase = passwords.read("New vault passphrase: ", true)?;
+        passwords.finish()?;
+        let mut client = LocalClient::create(
+            endpoint,
+            &ProfileId::parse(SOFTWARE_VAULT_PROFILE).map_err(|_| CliError::Usage)?,
+            passphrase,
+            VaultKdf::default(),
+            KdfBudget::default(),
+            SessionPolicy::default(),
+            now(),
+        )?;
+        check_interrupted()?;
+        let mut store = PrivateStateStore::create(&options.state)?;
+        let anchor = client.save(&mut store, None, now())?;
+        emit_anchor(&anchor, diagnostics)?;
+        writeln!(output, "Created local encrypted identity.")?;
+        return emit_identity(client.card(), output);
+    }
+    let mut store = PrivateStateStore::open(&options.state)?;
+    let loaded = store.read()?.ok_or(CliError::MissingState)?;
+    let passphrase = passwords.read("Vault passphrase: ", false)?;
+    if !matches!(options.command, Command::Passwd) {
+        passwords.finish()?;
+    }
+    let policy = options
+        .anchor
+        .as_ref()
+        .map_or(RestorePolicy::PasswordOnly, RestorePolicy::Anchored);
+    let mut client = LocalClient::open(
+        &loaded.bytes,
+        passphrase,
+        policy,
+        KdfBudget::default(),
+        SessionPolicy::default(),
+        now(),
+    )?;
+    check_interrupted()?;
+    if options.anchor.is_none() {
+        writeln!(
+            diagnostics,
+            "Password-only local protection; no independent identity pin or rollback protection."
+        )?;
+    }
+    let changed = match options.command {
+        Command::Identity => {
+            emit_identity(client.card(), output)?;
+            false
+        }
+        Command::Card => {
+            writeln!(output, "{}", client.card().to_uri()?)?;
+            false
+        }
+        Command::Contacts => {
+            for (card, status) in client.session_and_contacts(now())?.1.contacts() {
+                writeln!(
+                    output,
+                    "{}\t{}\t{}",
+                    card.endpoint_id.as_str(),
+                    status_label(status),
+                    card.fingerprint_hex()
+                )?;
+            }
+            false
+        }
+        Command::Import(card) => {
+            client
+                .session_and_contacts(now())?
+                .1
+                .observe(card)
+                .map_err(ArchiveError::from)?;
+            true
+        }
+        Command::Verify(id, fingerprint) => {
+            client
+                .session_and_contacts(now())?
+                .1
+                .verify(&id, fingerprint)
+                .map_err(ArchiveError::from)?;
+            true
+        }
+        Command::Revoke(id) => {
+            client
+                .session_and_contacts(now())?
+                .1
+                .revoke(&id)
+                .map_err(ArchiveError::from)?;
+            true
+        }
+        Command::Reactivate(id, fingerprint) => {
+            client
+                .session_and_contacts(now())?
+                .1
+                .reactivate(&id, fingerprint)
+                .map_err(ArchiveError::from)?;
+            true
+        }
+        Command::Passwd => {
+            let new_passphrase = passwords.read("New vault passphrase: ", true)?;
+            passwords.finish()?;
+            client.change_passphrase(
+                new_passphrase,
+                VaultKdf::default(),
+                KdfBudget::default(),
+                now(),
+            )?;
+            true
+        }
+        Command::Init(_) => return Err(CliError::Usage),
+    };
+    if changed {
+        check_interrupted()?;
+        let anchor = client.save(&mut store, Some(loaded.digest), now())?;
+        emit_anchor(&anchor, diagnostics)?;
+        writeln!(output, "Saved encrypted local state.")?;
+    }
+    client.lock();
+    Ok(())
+}
+
+fn emit_identity(card: &EndpointCard, output: &mut impl Write) -> Result<(), CliError> {
+    writeln!(output, "Endpoint: {}", card.endpoint_id.as_str())?;
+    writeln!(output, "Fingerprint: {}", card.fingerprint_hex())?;
+    Ok(())
+}
+
+fn emit_anchor(anchor: &ArchiveAnchor, diagnostics: &mut impl Write) -> Result<(), CliError> {
+    writeln!(diagnostics, "ANCHOR {}", encode_hex(&anchor.encode()?))?;
+    Ok(())
+}
+
+fn status_label(status: ContactStatus) -> &'static str {
+    match status {
+        ContactStatus::Unverified => "unverified",
+        ContactStatus::Verified => "verified",
+        ContactStatus::KeyChanged => "key-changed",
+        ContactStatus::Revoked => "revoked",
+    }
+}
+
+fn decode_hex<const N: usize>(value: &str) -> Result<[u8; N], ()> {
+    if value.len() != 2 * N || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(());
+    }
+    let mut bytes = [0; N];
+    for (index, pair) in value.as_bytes().as_chunks::<2>().0.iter().enumerate() {
+        let high = (pair[0] as char).to_digit(16).ok_or(())?;
+        let low = (pair[1] as char).to_digit(16).ok_or(())?;
+        bytes[index] = (high * 16 + low) as u8;
+    }
+    Ok(bytes)
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+struct Passwords {
+    from_stdin: bool,
+}
+
+impl Passwords {
+    fn new(from_stdin: bool) -> Result<Self, CliError> {
+        if from_stdin && io::stdin().is_terminal() {
+            return Err(CliError::TerminalInput);
+        }
+        Ok(Self { from_stdin })
+    }
+
+    fn read(&mut self, prompt: &str, confirm: bool) -> Result<Zeroizing<Vec<u8>>, CliError> {
+        check_interrupted()?;
+        let passphrase = if self.from_stdin {
+            read_credential_line(&mut io::stdin().lock())?
+        } else {
+            // Move the library's String allocation directly into a zeroizing
+            // buffer rather than making a second password copy.
+            Zeroizing::new(hidden_password(prompt)?.into_bytes())
+        };
+        if !(12..=1024).contains(&passphrase.len()) {
+            return Err(CliError::InvalidPassphrase);
+        }
+        if confirm && !self.from_stdin {
+            let confirmation =
+                Zeroizing::new(hidden_password("Confirm new passphrase: ")?.into_bytes());
+            if *confirmation != *passphrase {
+                return Err(CliError::ConfirmationMismatch);
+            }
+        }
+        Ok(passphrase)
+    }
+
+    fn finish(&mut self) -> Result<(), CliError> {
+        if self.from_stdin {
+            let mut extra = Zeroizing::new([0; 1]);
+            if io::stdin().lock().read(&mut *extra)? != 0 {
+                return Err(CliError::ExtraCredentialInput);
+            }
+        }
+        Ok(())
+    }
+}
+
+fn check_interrupted() -> Result<(), CliError> {
+    if INTERRUPTED.load(Ordering::SeqCst) {
+        Err(CliError::Interrupted)
+    } else {
+        Ok(())
+    }
+}
+
+fn hidden_password(prompt: &str) -> Result<String, CliError> {
+    let result = rpassword::prompt_password(prompt).map_err(|error| {
+        if error.kind() == io::ErrorKind::Interrupted {
+            CliError::Interrupted
+        } else {
+            CliError::Io(error)
+        }
+    })?;
+    let mut password = Zeroizing::new(result);
+    check_interrupted()?;
+    // Move the allocation into the caller's zeroizing byte buffer.
+    Ok(std::mem::take(&mut *password))
+}
+
+fn read_credential_line(input: &mut impl Read) -> Result<Zeroizing<Vec<u8>>, CliError> {
+    let mut password = Zeroizing::new(Vec::with_capacity(1025));
+    let mut byte = Zeroizing::new([0; 1]);
+    loop {
+        if input.read(&mut *byte)? == 0 {
+            break;
+        }
+        if byte[0] == b'\n' {
+            if password.last() == Some(&b'\r') {
+                password.pop();
+            }
+            break;
+        }
+        if password.len() == 1025 {
+            return Err(CliError::InvalidPassphrase);
+        }
+        password.push(byte[0]);
+    }
+    if !(12..=1024).contains(&password.len()) {
+        return Err(CliError::InvalidPassphrase);
+    }
+    Ok(password)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn explicit_profile_trust_mode_and_canonical_arguments_are_required() {
+        let args = |tail: &[&str]| tail.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>();
+        for invalid in [
+            args(&["--state", "private", "identity"]),
+            args(&["--state", "private", "--software-vault", "identity"]),
+            args(&[
+                "--state",
+                "private",
+                "--hardware-vault",
+                "--password-only",
+                "identity",
+            ]),
+            args(&[
+                "--state",
+                "private",
+                "--software-vault",
+                "--software-vault",
+                "--password-only",
+                "identity",
+            ]),
+            args(&[
+                "--state",
+                "private",
+                "--software-vault",
+                "--password-only",
+                "identity",
+                "extra",
+            ]),
+        ] {
+            assert!(parse(&invalid).is_err());
+        }
+        assert!(parse(&args(&[
+            "--state",
+            "private",
+            "--software-vault",
+            "--password-only",
+            "identity"
+        ]))
+        .is_ok());
+    }
+
+    #[test]
+    fn bounded_credential_lines_preserve_spaces_reject_overflow_and_support_crlf() {
+        let expected = b"  strong local secret  ";
+        assert_eq!(
+            &*read_credential_line(&mut Cursor::new([expected.as_slice(), b"\r\n"].concat()))
+                .unwrap(),
+            expected
+        );
+        assert!(read_credential_line(&mut Cursor::new(vec![b'x'; 1026])).is_err());
+        assert!(read_credential_line(&mut Cursor::new(b"short\n")).is_err());
+        assert_eq!(
+            read_credential_line(&mut Cursor::new(vec![b'x'; 1024]))
+                .unwrap()
+                .len(),
+            1024
+        );
+    }
+}

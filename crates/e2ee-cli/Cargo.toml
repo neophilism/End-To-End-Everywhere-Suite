@@ -1,0 +1,22 @@
+[package]
+name = "e2ee-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Local end-to-end encryption command-line client"
+
+[[bin]]
+name = "e2ee"
+path = "src/main.rs"
+
+[dependencies]
+ctrlc = "=3.5.2"
+e2ee-client = { path = "../e2ee-client" }
+e2ee-core = { path = "../e2ee-core" }
+e2ee-keystore = { path = "../e2ee-keystore" }
+e2ee-storage = { path = "../e2ee-storage" }
+rpassword = "=7.5.4"
+zeroize = "=1.8.2"
+
+[lints]
+workspace = true
