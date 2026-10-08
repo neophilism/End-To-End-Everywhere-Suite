@@ -1,0 +1,17 @@
+[package]
+name = "e2ee-transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Portable binary, armored-text and URI transport for Capsule deliveries"
+
+[dependencies]
+base64 = "=0.22.1"
+e2ee-capsule = { path = "../e2ee-capsule" }
+e2ee-provenance = { path = "../e2ee-provenance" }
+
+[dev-dependencies]
+e2ee-message = { path = "../e2ee-message" }
+
+[lints]
+workspace = true

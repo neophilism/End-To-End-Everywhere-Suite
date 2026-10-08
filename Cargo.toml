@@ -9,6 +9,7 @@ members = [
   "crates/e2ee-message",
   "crates/e2ee-provenance",
   "crates/e2ee-recovery",
+  "crates/e2ee-transport",
 ]
 resolver = "2"
 

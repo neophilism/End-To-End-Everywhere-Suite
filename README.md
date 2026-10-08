@@ -20,3 +20,9 @@ The implementation roadmap begins with the shared runtime, identity/device model
 ## Status
 
 Pre-alpha. Interfaces and cryptographic profiles are not yet stable.
+
+The Rust workspace now includes text and chunked-file encryption, authenticated
+multi-recipient envelopes, optional signer verification, and portable signed or
+unsigned deliveries. See [multi-recipient Capsules](docs/multi-recipient-capsules.md),
+[signatures](docs/capsule-signatures.md), and [transport](docs/capsule-transport.md).
+Consumer applications and platform keystore adapters are subsequent milestones.
