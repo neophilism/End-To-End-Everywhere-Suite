@@ -349,7 +349,9 @@ mod tests {
     #[test]
     fn returns_record_only_after_transparency_verification() {
         let mut client = DirectoryClient::new(verifier());
-        let verified = client.verify_lookup(&address(), response(1, 1, false)).unwrap();
+        let verified = client
+            .verify_lookup(&address(), response(1, 1, false))
+            .unwrap();
         assert_eq!(verified.record.address, address());
         assert_eq!(client.pinned_checkpoint().unwrap().tree_size, 1);
     }
@@ -370,7 +372,9 @@ mod tests {
     #[test]
     fn detects_same_size_equivocation() {
         let mut client = DirectoryClient::new(verifier());
-        client.verify_lookup(&address(), response(1, 1, false)).unwrap();
+        client
+            .verify_lookup(&address(), response(1, 1, false))
+            .unwrap();
         assert!(matches!(
             client.verify_lookup(&address(), response(1, 2, false)),
             Err(DirectoryError::EquivocationDetected)
@@ -380,7 +384,9 @@ mod tests {
     #[test]
     fn rejects_checkpoint_rollback() {
         let mut client = DirectoryClient::new(verifier());
-        client.verify_lookup(&address(), response(2, 2, false)).unwrap();
+        client
+            .verify_lookup(&address(), response(2, 2, false))
+            .unwrap();
         assert!(matches!(
             client.verify_lookup(&address(), response(1, 1, false)),
             Err(DirectoryError::RollbackDetected)
@@ -390,7 +396,9 @@ mod tests {
     #[test]
     fn advancing_tree_requires_consistency_proof() {
         let mut client = DirectoryClient::new(verifier());
-        client.verify_lookup(&address(), response(1, 1, false)).unwrap();
+        client
+            .verify_lookup(&address(), response(1, 1, false))
+            .unwrap();
         assert!(matches!(
             client.verify_lookup(&address(), response(2, 2, false)),
             Err(DirectoryError::MissingConsistencyProof)
@@ -400,8 +408,12 @@ mod tests {
     #[test]
     fn advancing_tree_accepts_verified_consistency() {
         let mut client = DirectoryClient::new(verifier());
-        client.verify_lookup(&address(), response(1, 1, false)).unwrap();
-        let verified = client.verify_lookup(&address(), response(2, 2, true)).unwrap();
+        client
+            .verify_lookup(&address(), response(1, 1, false))
+            .unwrap();
+        let verified = client
+            .verify_lookup(&address(), response(2, 2, true))
+            .unwrap();
         assert_eq!(verified.checkpoint.tree_size, 2);
     }
 }
