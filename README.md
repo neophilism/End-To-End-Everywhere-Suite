@@ -30,3 +30,5 @@ The explicit [software-vault fallback](docs/software-vault.md) now encrypts
 durable roots and local protocol state with local password-based unlocking.
 Recipient and signing keys support [encrypted endpoint persistence](docs/persistent-endpoint-keys.md)
 bound to their endpoint, algorithm and expected public key.
+The [shared client session](docs/client-sessions.md) now composes verified
+contacts, sender-checked text delivery, encrypted key persistence and auto-lock.

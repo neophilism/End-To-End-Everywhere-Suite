@@ -227,6 +227,20 @@ name = "e2ee-capsule"
 version = "0.1.0"
 
 [[package]]
+name = "e2ee-client"
+version = "0.1.0"
+dependencies = [
+ "e2ee-capsule",
+ "e2ee-core",
+ "e2ee-keystore",
+ "e2ee-message",
+ "e2ee-provenance",
+ "e2ee-transport",
+ "sha2",
+ "zeroize",
+]
+
+[[package]]
 name = "e2ee-core"
 version = "0.1.0"
 
