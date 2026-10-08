@@ -1,3 +1,22 @@
 # End-To-End Everywhere Suite
 
-Implementation repository for the End-To-End Everywhere user and enterprise encryption suite.
+End-To-End Everywhere Suite is the implementation layer for making end-to-end encryption usable by individuals, organizations, IT teams, and application developers.
+
+The suite is intentionally separate from the [End-To-End Everywhere Security Architecture Standard](https://github.com/neophilism/End-To-End-Everywhere-Security-Architecture-Standard). E2EESA defines security properties, profiles, and conformance rules; this repository implements products and reusable components against those profiles.
+
+## Design principles
+
+- **Endpoints decrypt; services coordinate, store, and transport ciphertext.**
+- **One cryptographic core, many user experiences.**
+- **Secure defaults with explicit downgrade behavior.**
+- **No green-lock overclaims:** metadata and trust limitations remain visible.
+- **Portable encrypted envelopes:** applications can carry protected data without understanding its plaintext.
+- **Usable by everyone:** desktop, mobile, browser, CLI, SDK, and enterprise administration are first-class surfaces.
+
+## Roadmap
+
+The implementation roadmap begins with the shared runtime, identity/device model, secure local key storage, device verification, transparency, and recovery. It then adds the E2E Capsule envelope, consumer apps, browser overlays, email, messaging/calls, SDKs, enterprise controls, infrastructure, CLI automation, and conformance/release work.
+
+## Status
+
+Pre-alpha. Interfaces and cryptographic profiles are not yet stable.
