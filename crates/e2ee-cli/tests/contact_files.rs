@@ -108,11 +108,7 @@ fn malformed_multiple_record_and_oversized_cards_fail_closed() {
         ("extra-record", format!("{contents}{contents}")),
         ("extra-newline", format!("{contents}\n")),
         ("trailing-spaces", format!("{contents} ")),
-        ("invalid-utf8-test", String::new()),
     ] {
-        if name == "invalid-utf8-test" {
-            continue;
-        }
         let file = temp.0.join(name);
         fs::write(&file, material).unwrap();
         let bad = cli(&bob, &["import-card", file.to_str().unwrap()]);
