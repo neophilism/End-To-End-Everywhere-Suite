@@ -19,7 +19,7 @@ fn capabilities_are_available_without_identity_or_password() {
     assert!(output.contains("\"network_delivery\": false"));
     assert!(output.contains("\"forward_secret_sessions\": false"));
     assert!(output.contains("\"verified_contact_pinning\": true"));
-    assert!(output.ends_with('\\n'));
+    assert!(output.ends_with(char::from(10u8)));
 }
 
 #[test]
