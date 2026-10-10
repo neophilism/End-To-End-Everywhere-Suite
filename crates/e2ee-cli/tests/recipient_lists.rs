@@ -22,11 +22,10 @@ impl PrivateTest {
             .unwrap()
             .as_nanos();
         let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
-        let folder =
-            std::env::temp_dir().join(format!(
-                "e2ee-group-{}-{stamp}-{serial}",
-                std::process::id()
-            ));
+        let folder = std::env::temp_dir().join(format!(
+            "e2ee-group-{}-{stamp}-{serial}",
+            std::process::id()
+        ));
         fs::DirBuilder::new().mode(0o700).create(&folder).unwrap();
         Self(folder)
     }
