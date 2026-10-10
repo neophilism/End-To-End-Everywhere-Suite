@@ -1,0 +1,53 @@
+name: Pre-alpha CLI packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "scripts/package-prealpha.sh"
+      - ".github/workflows/prealpha-packages.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "scripts/package-prealpha.sh"
+      - ".github/workflows/prealpha-packages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: Test and package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Rust workspace on host OS
+        run: cargo test --workspace --all-targets --locked
+      - name: Build release CLI on host OS
+        run: cargo build -p e2ee-cli --release --locked
+      - name: Package unsigned CLI test build
+        shell: bash
+        run: |
+          platform="$(printf '%s-%s' "$RUNNER_OS" "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')"
+          sh scripts/package-prealpha.sh target/release/e2ee "$platform" dist
+          test -f "dist/e2ee-prealpha-$platform.tar.gz"
+          tar tzf "dist/e2ee-prealpha-$platform.tar.gz"
+      - name: Upload engineering artifacts (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2ee-prealpha-${{ runner.os }}-${{ runner.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
