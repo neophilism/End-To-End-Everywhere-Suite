@@ -20,10 +20,8 @@ impl TempDirectory {
             .unwrap()
             .as_nanos();
         let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "e2ee-cli-{}-{name}-{serial}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("e2ee-cli-{}-{name}-{serial}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
