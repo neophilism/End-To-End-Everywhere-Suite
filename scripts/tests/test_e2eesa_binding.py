@@ -40,6 +40,10 @@ class RegistryBindingTests(unittest.TestCase):
     def test_exact_pin_accepted_without_conformance_claim(self):
         self.assertEqual(self.check(), [])
 
+    def test_constant_with_n_in_name_parses_correctly(self):
+        value = 'pub const SAMPLE: &str = "secret-names@1.0";'
+        self.assertEqual(checker.public_string_constant(value, "SAMPLE"), "secret-names@1.0")
+
     def test_wrong_source_commit_rejected(self):
         self.assertTrue(self.check(commit="b" * 40))
 
