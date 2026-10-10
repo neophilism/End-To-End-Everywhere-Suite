@@ -26,7 +26,7 @@ jobs:
       - name: Package unsigned CLI test build
         shell: bash
         run: |
-          platform="${RUNNER_OS,,}-${RUNNER_ARCH,,}"
+          platform="$(printf '%s-%s' "$RUNNER_OS" "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')"
           sh scripts/package-prealpha.sh target/release/e2ee "$platform" dist
           test -f "dist/e2ee-prealpha-$platform.tar.gz"
           tar tzf "dist/e2ee-prealpha-$platform.tar.gz"
