@@ -1,0 +1,9 @@
+{
+  "site_type": "static-informational",
+  "product": "End-To-End Everywhere Suite",
+  "product_maturity": "pre-alpha",
+  "is_encryption_service": false,
+  "production_ready": false,
+  "independently_certified": false,
+  "metadata_notice": "This JSON describes a documentation site, not a cryptographic system health check."
+}
