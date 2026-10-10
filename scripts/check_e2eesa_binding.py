@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def public_string_constant(source: str, name: str) -> str | None:
-    pattern = rf'(?m)^pub const {re.escape(name)}: &str = "([^"]+)";
+    pattern = rf'(?m)^pub const {re.escape(name)}: &str = "([^"]+)";$'
     matches = re.findall(pattern, source)
     return matches[0] if len(matches) == 1 else None
 
