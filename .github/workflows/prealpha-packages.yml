@@ -3,7 +3,21 @@ name: Pre-alpha CLI packages
 on:
   push:
     branches: [main]
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "scripts/package-prealpha.sh"
+      - ".github/workflows/prealpha-packages.yml"
   pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "scripts/package-prealpha.sh"
+      - ".github/workflows/prealpha-packages.yml"
   workflow_dispatch:
 
 permissions:
