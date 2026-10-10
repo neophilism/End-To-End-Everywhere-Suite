@@ -1,0 +1,17 @@
+name: Static site verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public site security labeling
+        run: python3 scripts/check-public-site.py
