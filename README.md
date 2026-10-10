@@ -1,5 +1,7 @@
 # End-To-End Everywhere Suite
 
+**Full product development and cross-account plan (72 stages):** [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md). The existing 40-unit implementation mapping is preserved separately.
+
 End-To-End Everywhere Suite is the implementation layer for making end-to-end encryption usable by individuals, organizations, IT teams, and application developers.
 
 The suite is intentionally separate from the [End-To-End Everywhere Security Architecture Standard](https://github.com/neophilism/End-To-End-Everywhere-Security-Architecture-Standard). E2EESA defines security properties, profiles, and conformance rules; this repository implements products and reusable components against those profiles.
