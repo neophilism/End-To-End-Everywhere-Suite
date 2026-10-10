@@ -22,11 +22,10 @@ impl Directory {
             .unwrap()
             .as_nanos();
         let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
-        let root =
-            std::env::temp_dir().join(format!(
-                "e2ee-self-file-{}-{stamp}-{serial}",
-                std::process::id()
-            ));
+        let root = std::env::temp_dir().join(format!(
+            "e2ee-self-file-{}-{stamp}-{serial}",
+            std::process::id()
+        ));
         fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
         Self(root)
     }
