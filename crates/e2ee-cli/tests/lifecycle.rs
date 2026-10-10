@@ -9,6 +9,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static WORKSPACE_SERIAL: AtomicU64 = AtomicU64::new(0);
+
 struct TempDirectory(PathBuf);
 impl TempDirectory {
     fn new() -> Self {
@@ -16,7 +20,8 @@ impl TempDirectory {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("e2ee-cli-{}-{name}", std::process::id()));
+        let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!("e2ee-cli-{}-{name}-{serial}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
