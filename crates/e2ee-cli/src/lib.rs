@@ -37,6 +37,7 @@ const MAX_RECIPIENT_FILE_BYTES: usize = 132_096;
 const MAX_ARMORED_DELIVERY_BYTES: usize = 56 * 1024 * 1024;
 
 pub const HELP: &str = "End-To-End Everywhere CLI (pre-alpha)\n\
+Usage: e2ee --help | --version | --capabilities-json\n\
 Usage: e2ee --state DIR --software-vault (--password-only | --anchor HEX) [--password-stdin] [--armor | --uri] [--include-self] COMMAND\n\n\
 Commands:\n\
   init ENDPOINT                 Create a new local encrypted identity\n\
@@ -76,6 +77,37 @@ representation for small encrypted Capsules (not a web URL). Never paste\n\
 plain text or private credential material into an email or web address.\n\
 --include-self adds the local endpoint as an explicit signed recipient of\n\
 seal-text or seal-file; open your retained copy via open-note/open-self-file.\n";
+
+/// Public, non-secret capability inventory for client wrappers and automation.
+/// This is not a security attestation or a probe of local device health.
+pub const CAPABILITIES_JSON: &str = r#"{
+  "schema_version": 1,
+  "component": "local-cli",
+  "maturity": "pre-alpha",
+  "requires_credentials_for_capabilities_query": false,
+  "features": {
+    "local_signed_text_and_files": true,
+    "verified_contact_pinning": true,
+    "encrypted_personal_notes": true,
+    "self_encrypted_files": true,
+    "multiple_recipients": true,
+    "software_password_vault": true,
+    "native_platform_keystore": false,
+    "network_delivery": false,
+    "encrypted_sync": false,
+    "desktop_or_mobile_gui": false,
+    "forward_secret_sessions": false,
+    "post_compromise_security": false,
+    "message_replay_protection": false
+  },
+  "operating_systems": {
+    "unix_local_state": true,
+    "windows_local_state": false
+  },
+  "backup_and_rollback": "independent-anchor-needed",
+  "security_certified": false,
+  "production_ready": false
+}"#;
 
 enum Command {
     Init(EndpointId),
@@ -204,6 +236,10 @@ pub fn entry(arguments: Vec<OsString>) -> i32 {
                 "e2ee {} (pre-alpha)",
                 env!("CARGO_PKG_VERSION")
             )?;
+            return Ok(());
+        }
+        if arguments == ["--capabilities-json"] {
+            writeln!(io::stdout().lock(), "{CAPABILITIES_JSON}")?;
             return Ok(());
         }
         let options = parse(&arguments)?;
