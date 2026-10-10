@@ -1,0 +1,22 @@
+project:
+  name: End-To-End-Everywhere-Suite
+  display_name: End-To-End Everywhere Suite
+  repository: neophilism/End-To-End-Everywhere-Suite
+  status: active-development
+
+roadmap:
+  version: 1
+  planned_prs: 40
+  approved: true
+
+milestones:
+  - name: Core identity, key storage and recovery
+    prs: 7
+  - name: Capsule formats, encryption and provenance
+    prs: 6
+  - name: Persistent client security and contacts
+    prs: 8
+  - name: Local CLI delivery and transport
+    prs: 9
+  - name: Personal vault usability and group-delivery tests
+    prs: 10
