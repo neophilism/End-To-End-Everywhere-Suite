@@ -421,103 +421,112 @@
     {
       "id": "E2ES-046",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
+      "title": "PR 46: Engine Room live roadmap with explicit PR evidence and extension backlog",
       "origin": "addition",
-      "github_prs": []
+      "github_prs": [
+        46
+      ]
     },
     {
       "id": "E2ES-047",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Cross-client device pairing and revocation interfaces",
+      "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-048",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
+      "title": "Cross-client device pairing and revocation interfaces",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-049",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Safe replay-rejection state, persistence and failure-mode testing",
+      "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-050",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Stable client API and developer SDK",
+      "title": "Safe replay-rejection state, persistence and failure-mode testing",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-051",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "End-user desktop encrypted file vault",
+      "title": "Stable client API and developer SDK",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-052",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Desktop notes, contacts and QR verification interface",
+      "title": "End-user desktop encrypted file vault",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-053",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Ciphertext-only relay and offline delivery protocol",
+      "title": "Desktop notes, contacts and QR verification interface",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-054",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Device-safe ciphertext synchronization with conflict handling",
+      "title": "Ciphertext-only relay and offline delivery protocol",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-055",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Signed app updates and secure distribution channels",
+      "title": "Device-safe ciphertext synchronization with conflict handling",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-056",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Integrated end-user messaging UI and interoperability tests",
+      "title": "Signed app updates and secure distribution channels",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-057",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Mobile vault and messenger interfaces",
+      "title": "Integrated end-user messaging UI and interoperability tests",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-058",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Email wrapper and browser integration",
+      "title": "Mobile vault and messenger interfaces",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-059",
       "repository": "End-To-End-Everywhere-Suite",
-      "title": "Enterprise policy controls without plaintext access",
+      "title": "Email wrapper and browser integration",
       "origin": "addition",
       "github_prs": []
     },
     {
       "id": "E2ES-060",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Enterprise policy controls without plaintext access",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-061",
       "repository": "End-To-End-Everywhere-Suite",
       "title": "Security audit, reproducible builds and scoped conformance evidence",
       "origin": "addition",
