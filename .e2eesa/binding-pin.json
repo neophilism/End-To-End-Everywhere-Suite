@@ -1,0 +1,15 @@
+{
+  "source_repository": "neophilism/End-To-End-Everywhere-Security-Architecture-Standard",
+  "source_commit": "cef6052bdb3bcf45ca0bd3e29d18a519d8f041e0",
+  "status": "compatibility-inventory-only",
+  "key_storage_constants": {
+    "PLATFORM_KEYSTORE_PROFILE": "secret-platform-keystore@0.1.0",
+    "HARDWARE_ISOLATED_PROFILE": "secret-hardware-isolated@0.1.0",
+    "EXTERNAL_TOKEN_PROFILE": "secret-external-token@0.1.0",
+    "SOFTWARE_VAULT_PROFILE": "secret-software-vault@0.1.0"
+  },
+  "message_suite_constant": {
+    "symbol": "E2EESA_MESSAGE_SUITE",
+    "value": "SUITE-HPKE-X25519-HKDF-SHA256-CHACHA20POLY1305"
+  }
+}

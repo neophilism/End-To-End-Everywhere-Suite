@@ -21,3 +21,20 @@ jobs:
         run: cargo test --workspace --all-targets --locked
       - name: Build
         run: cargo build --workspace --all-targets --locked
+
+  standards-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Suite checkout
+        uses: actions/checkout@v4
+      - name: Pinned E2EESA catalog checkout
+        uses: actions/checkout@v4
+        with:
+          repository: neophilism/End-To-End-Everywhere-Security-Architecture-Standard
+          ref: cef6052bdb3bcf45ca0bd3e29d18a519d8f041e0
+          path: .e2eesa-upstream
+          persist-credentials: false
+      - name: Registry compatibility inventory
+        run: python3 scripts/check_e2eesa_binding.py --standard-root .e2eesa-upstream
+      - name: Binding checker regression tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
