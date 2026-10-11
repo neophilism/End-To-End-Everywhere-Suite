@@ -1,3 +1,4 @@
+# CANONICAL PR ROADMAP: registry/roadmap.json. Historical original 40-unit subset follows. All current PR additions belong in canonical plan.
 project:
   name: End-To-End-Everywhere-Suite
   display_name: End-To-End Everywhere Suite
