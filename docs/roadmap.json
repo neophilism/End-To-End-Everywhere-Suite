@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "source_repository": "neophilism/End-To-End-Everywhere-Suite",
+  "original_baseline": {
+    "planned_prs": 40,
+    "mapping": "Exact GitHub PR numbers 1-40; merging these verifies historical engineering delivery only."
+  },
+  "readiness": {
+    "maturity": "pre-alpha",
+    "production_ready": false,
+    "independent_security_audit_verified": false,
+    "network_services_live": false
+  },
+  "scope_note": "Origin 'original' is the completed 40-PR developer-core baseline; 'addition' is extension engineering. An item is completed only when Engine Room verifies its mapped PR merge and inclusion. Empty github_prs is unimplemented work, not completed work.",
+  "items": [
+    {
+      "id": "E2ES-001",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 1: Suite architecture, monorepo foundation, and E2EESA binding",
+      "origin": "original",
+      "github_prs": [
+        1
+      ]
+    },
+    {
+      "id": "E2ES-002",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 2: Core cryptographic runtime and platform abstraction",
+      "origin": "original",
+      "github_prs": [
+        2
+      ]
+    },
+    {
+      "id": "E2ES-003",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 3: Universal identity, accounts, devices, and recipient addressing",
+      "origin": "original",
+      "github_prs": [
+        3
+      ]
+    },
+    {
+      "id": "E2ES-004",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 4: Secure local key storage and hardware-backed profile integration",
+      "origin": "original",
+      "github_prs": [
+        4
+      ]
+    },
+    {
+      "id": "E2ES-005",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 5: Device enrollment, QR pairing, and verification",
+      "origin": "original",
+      "github_prs": [
+        5
+      ]
+    },
+    {
+      "id": "E2ES-006",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 6: Key directory, discovery, and transparency client",
+      "origin": "original",
+      "github_prs": [
+        6
+      ]
+    },
+    {
+      "id": "E2ES-007",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 7: Recovery, backup, and device-loss workflows",
+      "origin": "original",
+      "github_prs": [
+        7
+      ]
+    },
+    {
+      "id": "E2ES-008",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 8: E2E Capsule universal encrypted-envelope format",
+      "origin": "original",
+      "github_prs": [
+        8
+      ]
+    },
+    {
+      "id": "E2ES-009",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 9: Text and message Capsule encryption",
+      "origin": "original",
+      "github_prs": [
+        9
+      ]
+    },
+    {
+      "id": "E2ES-010",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 10: File and attachment Capsule encryption",
+      "origin": "original",
+      "github_prs": [
+        10
+      ]
+    },
+    {
+      "id": "E2ES-011",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 11: Authenticated multi-recipient text and file Capsules",
+      "origin": "original",
+      "github_prs": [
+        11
+      ]
+    },
+    {
+      "id": "E2ES-012",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 12: Context-bound Capsule signatures and provenance",
+      "origin": "original",
+      "github_prs": [
+        12
+      ]
+    },
+    {
+      "id": "E2ES-013",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 13: Portable signed Capsule deliveries and transport encodings",
+      "origin": "original",
+      "github_prs": [
+        13
+      ]
+    },
+    {
+      "id": "E2ES-014",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 14: Password-unlocked software vault and encrypted local state",
+      "origin": "original",
+      "github_prs": [
+        14
+      ]
+    },
+    {
+      "id": "E2ES-015",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 15: Encrypted recipient and signer key persistence",
+      "origin": "original",
+      "github_prs": [
+        15
+      ]
+    },
+    {
+      "id": "E2ES-016",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 16: Verified contacts and shared secure client sessions",
+      "origin": "original",
+      "github_prs": [
+        16
+      ]
+    },
+    {
+      "id": "E2ES-017",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 17: Signed client file delivery and portable contact records",
+      "origin": "original",
+      "github_prs": [
+        17
+      ]
+    },
+    {
+      "id": "E2ES-018",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 18: Encrypted contact book, key-change verification and revocation",
+      "origin": "original",
+      "github_prs": [
+        18
+      ]
+    },
+    {
+      "id": "E2ES-019",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 19: Vault password changes and durable root retirement",
+      "origin": "original",
+      "github_prs": [
+        19
+      ]
+    },
+    {
+      "id": "E2ES-020",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 20: Private durable local state storage",
+      "origin": "original",
+      "github_prs": [
+        20
+      ]
+    },
+    {
+      "id": "E2ES-021",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 21: Complete encrypted client archives and restart recovery",
+      "origin": "original",
+      "github_prs": [
+        21
+      ]
+    },
+    {
+      "id": "E2ES-022",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 22: Executable local client for identities and verified contacts",
+      "origin": "original",
+      "github_prs": [
+        22
+      ]
+    },
+    {
+      "id": "E2ES-023",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 23: Signed text encryption and verified CLI opening",
+      "origin": "original",
+      "github_prs": [
+        23
+      ]
+    },
+    {
+      "id": "E2ES-024",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 24: End-to-end signed delivery CLI regression tests",
+      "origin": "original",
+      "github_prs": [
+        24
+      ]
+    },
+    {
+      "id": "E2ES-025",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 25: Signed encrypted file delivery from CLI",
+      "origin": "original",
+      "github_prs": [
+        25
+      ]
+    },
+    {
+      "id": "E2ES-026",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 26: Real-process encrypted attachment regression tests",
+      "origin": "original",
+      "github_prs": [
+        26
+      ]
+    },
+    {
+      "id": "E2ES-027",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 27: Opt-in ASCII-armored signed text and file deliveries",
+      "origin": "original",
+      "github_prs": [
+        27
+      ]
+    },
+    {
+      "id": "E2ES-028",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 28: Real-process ASCII-armored delivery tests",
+      "origin": "original",
+      "github_prs": [
+        28
+      ]
+    },
+    {
+      "id": "E2ES-029",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 29: Strict small-Capsule local URI delivery mode",
+      "origin": "original",
+      "github_prs": [
+        29
+      ]
+    },
+    {
+      "id": "E2ES-030",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 30: Bounded local URI delivery and failure-mode regression tests",
+      "origin": "original",
+      "github_prs": [
+        30
+      ]
+    },
+    {
+      "id": "E2ES-031",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 31: Encrypt and open personal notes to your own local identity",
+      "origin": "original",
+      "github_prs": [
+        31
+      ]
+    },
+    {
+      "id": "E2ES-032",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 32: Self-encrypted notes end-to-end CLI regression tests",
+      "origin": "original",
+      "github_prs": [
+        32
+      ]
+    },
+    {
+      "id": "E2ES-033",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 33: Encrypt and open files for your own identity",
+      "origin": "original",
+      "github_prs": [
+        33
+      ]
+    },
+    {
+      "id": "E2ES-034",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 34: Personal encrypted file real-process regression tests",
+      "origin": "original",
+      "github_prs": [
+        34
+      ]
+    },
+    {
+      "id": "E2ES-035",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 35: Public contact card file export and import",
+      "origin": "original",
+      "github_prs": [
+        35
+      ]
+    },
+    {
+      "id": "E2ES-036",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 36: End-to-end contact file exchange and trust regression tests",
+      "origin": "original",
+      "github_prs": [
+        36
+      ]
+    },
+    {
+      "id": "E2ES-037",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 37: Opt-in encrypted sent copies with verified recipients",
+      "origin": "original",
+      "github_prs": [
+        37
+      ]
+    },
+    {
+      "id": "E2ES-038",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 38: Real-process opt-in sent-copy encryption regression tests",
+      "origin": "original",
+      "github_prs": [
+        38
+      ]
+    },
+    {
+      "id": "E2ES-039",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 39: Verified multi-recipient delivery from bounded ID list files",
+      "origin": "original",
+      "github_prs": [
+        39
+      ]
+    },
+    {
+      "id": "E2ES-040",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 40: Verified multi-recipient roster and failure-mode integration tests",
+      "origin": "original",
+      "github_prs": [
+        40
+      ]
+    },
+    {
+      "id": "E2ES-041",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 41: Engine Room registration and honest baseline monitoring",
+      "origin": "addition",
+      "github_prs": [
+        41
+      ]
+    },
+    {
+      "id": "E2ES-042",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 42: Pinned E2EESA registry compatibility gate",
+      "origin": "addition",
+      "github_prs": [
+        42
+      ]
+    },
+    {
+      "id": "E2ES-043",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 43: macOS/Linux pre-alpha CLI smoke tests and downloadable CI artifacts",
+      "origin": "addition",
+      "github_prs": [
+        43
+      ]
+    },
+    {
+      "id": "E2ES-044",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 44: Public Suite information site, deployment blueprint and claim checks",
+      "origin": "addition",
+      "github_prs": [
+        44
+      ]
+    },
+    {
+      "id": "E2ES-045",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 45: Machine-readable CLI capability and security-limitation inventory",
+      "origin": "addition",
+      "github_prs": [
+        45
+      ]
+    },
+    {
+      "id": "E2ES-046",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "PR 46: Engine Room live roadmap with explicit PR evidence and extension backlog",
+      "origin": "addition",
+      "github_prs": [
+        46
+      ]
+    },
+    {
+      "id": "E2ES-047",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-048",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Cross-client device pairing and revocation interfaces",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-049",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-050",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Safe replay-rejection state, persistence and failure-mode testing",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-051",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Stable client API and developer SDK",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-052",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "End-user desktop encrypted file vault",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-053",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Desktop notes, contacts and QR verification interface",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-054",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Ciphertext-only relay and offline delivery protocol",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-055",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Device-safe ciphertext synchronization with conflict handling",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-056",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Signed app updates and secure distribution channels",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-057",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Integrated end-user messaging UI and interoperability tests",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-058",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Mobile vault and messenger interfaces",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-059",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Email wrapper and browser integration",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-060",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Enterprise policy controls without plaintext access",
+      "origin": "addition",
+      "github_prs": []
+    },
+    {
+      "id": "E2ES-061",
+      "repository": "End-To-End-Everywhere-Suite",
+      "title": "Security audit, reproducible builds and scoped conformance evidence",
+      "origin": "addition",
+      "github_prs": []
+    }
+  ]
+}
