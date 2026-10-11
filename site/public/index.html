@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="End-To-End Everywhere Suite - open-source, pre-alpha local encryption tools and engineering status.">
+  <meta name="theme-color" content="#101b2a">
+  <title>End-To-End Everywhere Suite | Development Preview</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="container bar-inner">
+      <a class="brand" href="/">E2EE <span>EVERYWHERE</span></a>
+      <span class="status"><span aria-hidden="true" class="dot"></span> PRE-ALPHA</span>
+    </div>
+  </header>
+  <main class="container">
+    <section class="hero" aria-labelledby="headline">
+      <p class="eyebrow">THE END-TO-END EVERYWHERE PROJECT</p>
+      <h1 id="headline">Encryption belongs at <em>the endpoints.</em></h1>
+      <p class="intro">An open-source implementation effort for private messages, files, contacts, and eventually familiar applications. Its Rust core and local command-line workflows are in active development.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/neophilism/End-To-End-Everywhere-Suite">Explore the source <span aria-hidden="true">↗</span></a>
+        <a class="button secondary" href="https://github.com/neophilism/End-To-End-Everywhere-Suite/actions">See current build results <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="warning"><strong>Security notice.</strong> This is an informational site, not an encryption service. The Suite is pre-alpha, is not independently certified, and must not be trusted for sensitive production communications.</p>
+    </section>
+    <section class="section" aria-labelledby="build">
+      <p class="eyebrow">WHAT YOU CAN ACTUALLY RUN</p>
+      <h2 id="build">A developer-ready foundation, not yet a consumer product</h2>
+      <div class="cards">
+        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Local encrypted files</h3><p>Signed and encrypted Capsule deliveries, private file handling, and personal notes through the local Rust CLI.</p></article>
+        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Verified contacts</h3><p>Contact-card exchange, independent key verification, revocation, and multi-recipient operations.</p></article>
+        <article class="card"><span class="kicker">NOT YET AVAILABLE</span><h3>Apps and network delivery</h3><p>Desktop/mobile UX, online relay services, message synchronization, and forward-secret messaging remain future work.</p></article>
+      </div>
+    </section>
+    <section class="section split" aria-labelledby="truth">
+      <div><p class="eyebrow">ENGINEERING TRANSPARENCY</p><h2 id="truth">Build status isn't the same as security assurance.</h2></div>
+      <div><p>GitHub Actions can show whether the code builds and its automated tests pass. That does not establish E2EESA conformance, device-key security, resistance to advanced attacks, independent cryptographic review, or production availability.</p>
+      <p>The <a href="https://github.com/neophilism/End-To-End-Everywhere-Security-Architecture-Standard">architecture standard</a> is maintained separately from this implementation. Features must state their actual security properties and limitations.</p>
+      <p><a href="https://github.com/neophilism/End-To-End-Everywhere-Suite/blob/main/docs/cli.md">Read the local CLI instructions →</a></p></div>
+    </section>
+  </main>
+  <footer class="footer"><div class="container">End-To-End Everywhere Suite · Development preview · No accounts, secrets, or encrypted data are collected by this static site.</div></footer>
+</body>
+</html>

@@ -6,8 +6,11 @@ use std::{
     os::unix::fs::{DirBuilderExt, PermissionsExt},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static WORKSPACE_SERIAL: AtomicU64 = AtomicU64::new(0);
 
 const PASSPHRASE: &[u8] = b"file contact integration password\n";
 
@@ -18,7 +21,9 @@ impl Isolated {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("e2ee-card-{}-{stamp}", std::process::id()));
+        let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
+        let dir =
+            std::env::temp_dir().join(format!("e2ee-card-{}-{stamp}-{serial}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
         Self(dir)
     }

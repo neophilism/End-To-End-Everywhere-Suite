@@ -6,8 +6,11 @@ use std::{
     os::unix::fs::DirBuilderExt,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static WORKSPACE_SERIAL: AtomicU64 = AtomicU64::new(0);
 
 const PASSWORD: &[u8] = b"group encryption integration password\n";
 
@@ -18,8 +21,11 @@ impl PrivateTest {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let folder =
-            std::env::temp_dir().join(format!("e2ee-group-{}-{stamp}", std::process::id()));
+        let serial = WORKSPACE_SERIAL.fetch_add(1, Ordering::Relaxed);
+        let folder = std::env::temp_dir().join(format!(
+            "e2ee-group-{}-{stamp}-{serial}",
+            std::process::id()
+        ));
         fs::DirBuilder::new().mode(0o700).create(&folder).unwrap();
         Self(folder)
     }
