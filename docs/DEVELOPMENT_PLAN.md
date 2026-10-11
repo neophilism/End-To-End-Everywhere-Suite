@@ -1,3 +1,5 @@
+> **Current canonical PR roadmap:** [`registry/roadmap.json`](../registry/roadmap.json). Historical 72-product-slot plan follows; PR work ledger and active denominator are maintained in the canonical registry.
+
 # End-To-End Everywhere Suite — original 72-milestone product plan and full handoff
 
 **Historical source:** October 7–8, 2026 conversations. The **72-slot original product roadmap** is distinct from the later **40-unit implementation/Engine Room mapping** in [`.exechub/project.yml`](../.exechub/project.yml). Do not silently overwrite either denominator. Original stage names #8–46 are directly recoverable; #1–7 and #47–72 have their original ordered *phase/category and count* recovered, but the detailed headings shown for those slots are **explicit reconstruction for implementation, not verified verbatim titles**.
