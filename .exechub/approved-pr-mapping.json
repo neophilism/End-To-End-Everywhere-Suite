@@ -44,5 +44,7 @@
     38,
     39,
     40
-  ]
+  ],
+  "_canonicalRoadmap": "registry/roadmap.json",
+  "_notice": "Baseline mapping only. Maintain the expanded PR ledger in canonical roadmap."
 }
