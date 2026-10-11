@@ -1,0 +1,1175 @@
+{
+  "schemaVersion": 1,
+  "repository": "neophilism/End-To-End-Everywhere-Suite",
+  "roadmapVersion": 1,
+  "planVerified": true,
+  "plannedPrCount": 61,
+  "observedAt": "2026-10-11T17:40:41.158Z",
+  "units": [
+    {
+      "id": "E2ES-001",
+      "title": "PR 1: Suite architecture, monorepo foundation, and E2EESA binding",
+      "origin": "original",
+      "prs": [
+        1
+      ]
+    },
+    {
+      "id": "E2ES-002",
+      "title": "PR 2: Core cryptographic runtime and platform abstraction",
+      "origin": "original",
+      "prs": [
+        2
+      ]
+    },
+    {
+      "id": "E2ES-003",
+      "title": "PR 3: Universal identity, accounts, devices, and recipient addressing",
+      "origin": "original",
+      "prs": [
+        3
+      ]
+    },
+    {
+      "id": "E2ES-004",
+      "title": "PR 4: Secure local key storage and hardware-backed profile integration",
+      "origin": "original",
+      "prs": [
+        4
+      ]
+    },
+    {
+      "id": "E2ES-005",
+      "title": "PR 5: Device enrollment, QR pairing, and verification",
+      "origin": "original",
+      "prs": [
+        5
+      ]
+    },
+    {
+      "id": "E2ES-006",
+      "title": "PR 6: Key directory, discovery, and transparency client",
+      "origin": "original",
+      "prs": [
+        6
+      ]
+    },
+    {
+      "id": "E2ES-007",
+      "title": "PR 7: Recovery, backup, and device-loss workflows",
+      "origin": "original",
+      "prs": [
+        7
+      ]
+    },
+    {
+      "id": "E2ES-008",
+      "title": "PR 8: E2E Capsule universal encrypted-envelope format",
+      "origin": "original",
+      "prs": [
+        8
+      ]
+    },
+    {
+      "id": "E2ES-009",
+      "title": "PR 9: Text and message Capsule encryption",
+      "origin": "original",
+      "prs": [
+        9
+      ]
+    },
+    {
+      "id": "E2ES-010",
+      "title": "PR 10: File and attachment Capsule encryption",
+      "origin": "original",
+      "prs": [
+        10
+      ]
+    },
+    {
+      "id": "E2ES-011",
+      "title": "PR 11: Authenticated multi-recipient text and file Capsules",
+      "origin": "original",
+      "prs": [
+        11
+      ]
+    },
+    {
+      "id": "E2ES-012",
+      "title": "PR 12: Context-bound Capsule signatures and provenance",
+      "origin": "original",
+      "prs": [
+        12
+      ]
+    },
+    {
+      "id": "E2ES-013",
+      "title": "PR 13: Portable signed Capsule deliveries and transport encodings",
+      "origin": "original",
+      "prs": [
+        13
+      ]
+    },
+    {
+      "id": "E2ES-014",
+      "title": "PR 14: Password-unlocked software vault and encrypted local state",
+      "origin": "original",
+      "prs": [
+        14
+      ]
+    },
+    {
+      "id": "E2ES-015",
+      "title": "PR 15: Encrypted recipient and signer key persistence",
+      "origin": "original",
+      "prs": [
+        15
+      ]
+    },
+    {
+      "id": "E2ES-016",
+      "title": "PR 16: Verified contacts and shared secure client sessions",
+      "origin": "original",
+      "prs": [
+        16
+      ]
+    },
+    {
+      "id": "E2ES-017",
+      "title": "PR 17: Signed client file delivery and portable contact records",
+      "origin": "original",
+      "prs": [
+        17
+      ]
+    },
+    {
+      "id": "E2ES-018",
+      "title": "PR 18: Encrypted contact book, key-change verification and revocation",
+      "origin": "original",
+      "prs": [
+        18
+      ]
+    },
+    {
+      "id": "E2ES-019",
+      "title": "PR 19: Vault password changes and durable root retirement",
+      "origin": "original",
+      "prs": [
+        19
+      ]
+    },
+    {
+      "id": "E2ES-020",
+      "title": "PR 20: Private durable local state storage",
+      "origin": "original",
+      "prs": [
+        20
+      ]
+    },
+    {
+      "id": "E2ES-021",
+      "title": "PR 21: Complete encrypted client archives and restart recovery",
+      "origin": "original",
+      "prs": [
+        21
+      ]
+    },
+    {
+      "id": "E2ES-022",
+      "title": "PR 22: Executable local client for identities and verified contacts",
+      "origin": "original",
+      "prs": [
+        22
+      ]
+    },
+    {
+      "id": "E2ES-023",
+      "title": "PR 23: Signed text encryption and verified CLI opening",
+      "origin": "original",
+      "prs": [
+        23
+      ]
+    },
+    {
+      "id": "E2ES-024",
+      "title": "PR 24: End-to-end signed delivery CLI regression tests",
+      "origin": "original",
+      "prs": [
+        24
+      ]
+    },
+    {
+      "id": "E2ES-025",
+      "title": "PR 25: Signed encrypted file delivery from CLI",
+      "origin": "original",
+      "prs": [
+        25
+      ]
+    },
+    {
+      "id": "E2ES-026",
+      "title": "PR 26: Real-process encrypted attachment regression tests",
+      "origin": "original",
+      "prs": [
+        26
+      ]
+    },
+    {
+      "id": "E2ES-027",
+      "title": "PR 27: Opt-in ASCII-armored signed text and file deliveries",
+      "origin": "original",
+      "prs": [
+        27
+      ]
+    },
+    {
+      "id": "E2ES-028",
+      "title": "PR 28: Real-process ASCII-armored delivery tests",
+      "origin": "original",
+      "prs": [
+        28
+      ]
+    },
+    {
+      "id": "E2ES-029",
+      "title": "PR 29: Strict small-Capsule local URI delivery mode",
+      "origin": "original",
+      "prs": [
+        29
+      ]
+    },
+    {
+      "id": "E2ES-030",
+      "title": "PR 30: Bounded local URI delivery and failure-mode regression tests",
+      "origin": "original",
+      "prs": [
+        30
+      ]
+    },
+    {
+      "id": "E2ES-031",
+      "title": "PR 31: Encrypt and open personal notes to your own local identity",
+      "origin": "original",
+      "prs": [
+        31
+      ]
+    },
+    {
+      "id": "E2ES-032",
+      "title": "PR 32: Self-encrypted notes end-to-end CLI regression tests",
+      "origin": "original",
+      "prs": [
+        32
+      ]
+    },
+    {
+      "id": "E2ES-033",
+      "title": "PR 33: Encrypt and open files for your own identity",
+      "origin": "original",
+      "prs": [
+        33
+      ]
+    },
+    {
+      "id": "E2ES-034",
+      "title": "PR 34: Personal encrypted file real-process regression tests",
+      "origin": "original",
+      "prs": [
+        34
+      ]
+    },
+    {
+      "id": "E2ES-035",
+      "title": "PR 35: Public contact card file export and import",
+      "origin": "original",
+      "prs": [
+        35
+      ]
+    },
+    {
+      "id": "E2ES-036",
+      "title": "PR 36: End-to-end contact file exchange and trust regression tests",
+      "origin": "original",
+      "prs": [
+        36
+      ]
+    },
+    {
+      "id": "E2ES-037",
+      "title": "PR 37: Opt-in encrypted sent copies with verified recipients",
+      "origin": "original",
+      "prs": [
+        37
+      ]
+    },
+    {
+      "id": "E2ES-038",
+      "title": "PR 38: Real-process opt-in sent-copy encryption regression tests",
+      "origin": "original",
+      "prs": [
+        38
+      ]
+    },
+    {
+      "id": "E2ES-039",
+      "title": "PR 39: Verified multi-recipient delivery from bounded ID list files",
+      "origin": "original",
+      "prs": [
+        39
+      ]
+    },
+    {
+      "id": "E2ES-040",
+      "title": "PR 40: Verified multi-recipient roster and failure-mode integration tests",
+      "origin": "original",
+      "prs": [
+        40
+      ]
+    },
+    {
+      "id": "E2ES-041",
+      "title": "PR 41: Engine Room registration and honest baseline monitoring",
+      "origin": "addition",
+      "prs": [
+        41
+      ]
+    },
+    {
+      "id": "E2ES-042",
+      "title": "PR 42: Pinned E2EESA registry compatibility gate",
+      "origin": "addition",
+      "prs": [
+        42
+      ]
+    },
+    {
+      "id": "E2ES-043",
+      "title": "PR 43: macOS/Linux pre-alpha CLI smoke tests and downloadable CI artifacts",
+      "origin": "addition",
+      "prs": [
+        43
+      ]
+    },
+    {
+      "id": "E2ES-044",
+      "title": "PR 44: Public Suite information site, deployment blueprint and claim checks",
+      "origin": "addition",
+      "prs": [
+        44
+      ]
+    },
+    {
+      "id": "E2ES-045",
+      "title": "PR 45: Machine-readable CLI capability and security-limitation inventory",
+      "origin": "addition",
+      "prs": [
+        45
+      ]
+    },
+    {
+      "id": "E2ES-046",
+      "title": "PR 46: Engine Room live roadmap with explicit PR evidence and extension backlog",
+      "origin": "addition",
+      "prs": [
+        46
+      ]
+    },
+    {
+      "id": "E2ES-047",
+      "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-048",
+      "title": "Cross-client device pairing and revocation interfaces",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-049",
+      "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-050",
+      "title": "Safe replay-rejection state, persistence and failure-mode testing",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-051",
+      "title": "Stable client API and developer SDK",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-052",
+      "title": "End-user desktop encrypted file vault",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-053",
+      "title": "Desktop notes, contacts and QR verification interface",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-054",
+      "title": "Ciphertext-only relay and offline delivery protocol",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-055",
+      "title": "Device-safe ciphertext synchronization with conflict handling",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-056",
+      "title": "Signed app updates and secure distribution channels",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-057",
+      "title": "Integrated end-user messaging UI and interoperability tests",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-058",
+      "title": "Mobile vault and messenger interfaces",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-059",
+      "title": "Email wrapper and browser integration",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-060",
+      "title": "Enterprise policy controls without plaintext access",
+      "origin": "addition",
+      "prs": []
+    },
+    {
+      "id": "E2ES-061",
+      "title": "Security audit, reproducible builds and scoped conformance evidence",
+      "origin": "addition",
+      "prs": []
+    }
+  ],
+  "pullRequests": [
+    {
+      "id": 4807486328,
+      "number": 47,
+      "title": "PR 47: Security disclosure, threat model and explicit production release gates",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/47",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:56:40.000Z",
+      "updatedAt": "2026-10-11T05:08:45.000Z",
+      "closedAt": "2026-10-11T05:08:45.000Z",
+      "mergedAt": "2026-10-11T05:08:45.000Z",
+      "headSha": "e4a363d8da0e366733d4499e7b9a384b6597868c",
+      "baseRef": "main",
+      "mergeCommitSha": "e5a4f5417e57b1fe25ebf1c57e4f1c2b145bdd68"
+    },
+    {
+      "id": 4807468986,
+      "number": 46,
+      "title": "PR 46: Engine Room live roadmap with explicit PR evidence and extension backlog",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/46",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:53:53.000Z",
+      "updatedAt": "2026-10-11T04:54:47.000Z",
+      "closedAt": "2026-10-11T04:54:47.000Z",
+      "mergedAt": "2026-10-11T04:54:47.000Z",
+      "headSha": "774124273c28aa134622417190822faff5d28e0b",
+      "baseRef": "main",
+      "mergeCommitSha": "b525458d936fcaeed43af7ec0e34433cd89cefe0"
+    },
+    {
+      "id": 4807452913,
+      "number": 45,
+      "title": "PR 45: Machine-readable CLI capability and security-limitation inventory",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/45",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:51:02.000Z",
+      "updatedAt": "2026-10-11T04:40:54.000Z",
+      "closedAt": "2026-10-11T04:40:54.000Z",
+      "mergedAt": "2026-10-11T04:40:54.000Z",
+      "headSha": "ca972a386fc8185ac3578beccc9523a6e1389985",
+      "baseRef": "main",
+      "mergeCommitSha": "b778c9f39ce7369f3fdf8ef446ab03b60edac7f0"
+    },
+    {
+      "id": 4807445586,
+      "number": 44,
+      "title": "PR 44: Public Suite information site, deployment blueprint and claim checks",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/44",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:49:55.000Z",
+      "updatedAt": "2026-10-11T04:27:29.000Z",
+      "closedAt": "2026-10-11T04:27:29.000Z",
+      "mergedAt": "2026-10-11T04:27:29.000Z",
+      "headSha": "b04211d91bc693e4ed9bbef303c851b10dc71857",
+      "baseRef": "main",
+      "mergeCommitSha": "fb2dd29e81c4681152324e6d2293f63cf2daee18"
+    },
+    {
+      "id": 4807436457,
+      "number": 43,
+      "title": "PR 43: macOS/Linux pre-alpha CLI smoke tests and downloadable CI artifacts",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/43",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:48:15.000Z",
+      "updatedAt": "2026-10-11T04:11:10.000Z",
+      "closedAt": "2026-10-11T04:11:10.000Z",
+      "mergedAt": "2026-10-11T04:11:10.000Z",
+      "headSha": "f38bd034944fcbab3f871fe39bf2668b0952f438",
+      "baseRef": "main",
+      "mergeCommitSha": "ce76ab48f970ab9b1fa64d5e340ab2ccf02463d2"
+    },
+    {
+      "id": 4807425009,
+      "number": 42,
+      "title": "PR 42: Pinned E2EESA registry compatibility gate",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/42",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:46:14.000Z",
+      "updatedAt": "2026-10-10T16:00:52.000Z",
+      "closedAt": "2026-10-10T16:00:52.000Z",
+      "mergedAt": "2026-10-10T16:00:51.000Z",
+      "headSha": "06a2525065c38b891b731178dcf6d4382a3adfca",
+      "baseRef": "main",
+      "mergeCommitSha": "8f039d4ba9111775e0ef46bf6cdec985811200e5"
+    },
+    {
+      "id": 4807413978,
+      "number": 41,
+      "title": "PR 41: Engine Room registration and honest baseline monitoring",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/41",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-10T00:44:17.000Z",
+      "updatedAt": "2026-10-10T00:54:13.000Z",
+      "closedAt": "2026-10-10T00:54:13.000Z",
+      "mergedAt": "2026-10-10T00:54:13.000Z",
+      "headSha": "c3a561586752c18b6e5a156fa59963874175a265",
+      "baseRef": "main",
+      "mergeCommitSha": "aa810954b88c77518dd21a65639cebd996b16713"
+    },
+    {
+      "id": 4787811476,
+      "number": 40,
+      "title": "PR 40: Verified multi-recipient roster and failure-mode integration tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/40",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:50:19.000Z",
+      "updatedAt": "2026-10-08T13:56:53.000Z",
+      "closedAt": "2026-10-08T13:56:53.000Z",
+      "mergedAt": "2026-10-08T13:56:53.000Z",
+      "headSha": "e7b7509da47f3e0a82eeda1fc2a83dbc33ab7145",
+      "baseRef": "main",
+      "mergeCommitSha": "74b92ae2830fca6b2ae8e1f1a419e57f12eb8830"
+    },
+    {
+      "id": 4787774519,
+      "number": 39,
+      "title": "PR 39: Verified multi-recipient delivery from bounded ID list files",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/39",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:47:34.000Z",
+      "updatedAt": "2026-10-08T13:56:02.000Z",
+      "closedAt": "2026-10-08T13:56:01.000Z",
+      "mergedAt": "2026-10-08T13:56:01.000Z",
+      "headSha": "671d6c3f02c1d0c10b3ddb499047e1b709dbcdec",
+      "baseRef": "main",
+      "mergeCommitSha": "65a5c0ef39a9a73ee9a3a588cba05426245ba142"
+    },
+    {
+      "id": 4787732827,
+      "number": 38,
+      "title": "PR 38: Real-process opt-in sent-copy encryption regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/38",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:44:12.000Z",
+      "updatedAt": "2026-10-08T14:05:37.000Z",
+      "closedAt": "2026-10-08T14:05:37.000Z",
+      "mergedAt": "2026-10-08T14:05:36.000Z",
+      "headSha": "3a3e3fed0344ece26a240ba51a82d27a86d4d28d",
+      "baseRef": "main",
+      "mergeCommitSha": "9201edb3475993a95ce29b3cbb5031eed3575c4f"
+    },
+    {
+      "id": 4787723007,
+      "number": 37,
+      "title": "PR 37: Opt-in encrypted sent copies with verified recipients",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/37",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:43:24.000Z",
+      "updatedAt": "2026-10-08T13:52:15.000Z",
+      "closedAt": "2026-10-08T13:52:15.000Z",
+      "mergedAt": "2026-10-08T13:52:15.000Z",
+      "headSha": "3763870eb02a8901e5281e97d172deebb793f422",
+      "baseRef": "main",
+      "mergeCommitSha": "317e47579ddc1a7234f2bc9db972c023fbaea339"
+    },
+    {
+      "id": 4787667077,
+      "number": 36,
+      "title": "PR 36: End-to-end contact file exchange and trust regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/36",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:39:02.000Z",
+      "updatedAt": "2026-10-08T13:47:56.000Z",
+      "closedAt": "2026-10-08T13:47:56.000Z",
+      "mergedAt": "2026-10-08T13:47:56.000Z",
+      "headSha": "27cf59cb95e5bafb39fc1ae252c12601f6703b5a",
+      "baseRef": "main",
+      "mergeCommitSha": "00322e48e10ffde39d96821fe210c3c86d91e42d"
+    },
+    {
+      "id": 4787636458,
+      "number": 35,
+      "title": "PR 35: Public contact card file export and import",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/35",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:36:43.000Z",
+      "updatedAt": "2026-10-08T13:44:30.000Z",
+      "closedAt": "2026-10-08T13:44:30.000Z",
+      "mergedAt": "2026-10-08T13:44:30.000Z",
+      "headSha": "2c3649e7b3d83e4de284bf3ad254b97112552aad",
+      "baseRef": "main",
+      "mergeCommitSha": "a4466f716e379499a95c036941fd043ebeb70a09"
+    },
+    {
+      "id": 4787388498,
+      "number": 34,
+      "title": "PR 34: Personal encrypted file real-process regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/34",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:17:16.000Z",
+      "updatedAt": "2026-10-08T13:24:12.000Z",
+      "closedAt": "2026-10-08T13:24:11.000Z",
+      "mergedAt": "2026-10-08T13:24:11.000Z",
+      "headSha": "12b0af8e4bcf4cd00ab825858912f61804dd80f6",
+      "baseRef": "main",
+      "mergeCommitSha": "fa66a812610ee52e73b37b52550326db5f5247ab"
+    },
+    {
+      "id": 4787344011,
+      "number": 33,
+      "title": "PR 33: Encrypt and open files for your own identity",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/33",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:13:47.000Z",
+      "updatedAt": "2026-10-08T13:20:20.000Z",
+      "closedAt": "2026-10-08T13:20:20.000Z",
+      "mergedAt": "2026-10-08T13:20:20.000Z",
+      "headSha": "989877c22bdc4837539ad7a84f57f2cb140d8b02",
+      "baseRef": "main",
+      "mergeCommitSha": "7715ccbb153179b9a4fe150c46f211f497a2a1a3"
+    },
+    {
+      "id": 4787310191,
+      "number": 32,
+      "title": "PR 32: Self-encrypted notes end-to-end CLI regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/32",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:11:14.000Z",
+      "updatedAt": "2026-10-08T13:31:19.000Z",
+      "closedAt": "2026-10-08T13:31:19.000Z",
+      "mergedAt": "2026-10-08T13:31:18.000Z",
+      "headSha": "47e73c64fdfe8dad7967ccc1f256b17a06b53993",
+      "baseRef": "main",
+      "mergeCommitSha": "0353234df21778261f7d81d7e8deec1ade01ca8c"
+    },
+    {
+      "id": 4787279163,
+      "number": 31,
+      "title": "PR 31: Encrypt and open personal notes to your own local identity",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/31",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:08:38.000Z",
+      "updatedAt": "2026-10-08T13:19:24.000Z",
+      "closedAt": "2026-10-08T13:19:24.000Z",
+      "mergedAt": "2026-10-08T13:19:23.000Z",
+      "headSha": "f70a21ef63f2182b033a6dd76d308f04d7764f8f",
+      "baseRef": "main",
+      "mergeCommitSha": "88a4e10b16452b9e77bca3ec7e54fec36d397e2f"
+    },
+    {
+      "id": 4787198223,
+      "number": 30,
+      "title": "PR 30: Bounded local URI delivery and failure-mode regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/30",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:02:15.000Z",
+      "updatedAt": "2026-10-08T13:09:12.000Z",
+      "closedAt": "2026-10-08T13:09:12.000Z",
+      "mergedAt": "2026-10-08T13:09:12.000Z",
+      "headSha": "4a80fd373b32865907bdc4f3d099e5faef4b2566",
+      "baseRef": "main",
+      "mergeCommitSha": "365fc0c93bd3cf12a2e90901aaf9ff826452b749"
+    },
+    {
+      "id": 4787181911,
+      "number": 29,
+      "title": "PR 29: Strict small-Capsule local URI delivery mode",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/29",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T13:00:50.000Z",
+      "updatedAt": "2026-10-08T13:04:37.000Z",
+      "closedAt": "2026-10-08T13:04:37.000Z",
+      "mergedAt": "2026-10-08T13:04:37.000Z",
+      "headSha": "81676d384f201a06f867b26db8cf0d164ea25ddc",
+      "baseRef": "main",
+      "mergeCommitSha": "685b835d61dda41686de66a264827ed0c1c6fd86"
+    },
+    {
+      "id": 4787148755,
+      "number": 28,
+      "title": "PR 28: Real-process ASCII-armored delivery tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/28",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T12:58:04.000Z",
+      "updatedAt": "2026-10-08T13:09:07.000Z",
+      "closedAt": "2026-10-08T13:09:07.000Z",
+      "mergedAt": "2026-10-08T13:09:07.000Z",
+      "headSha": "09d762d101132a7ff6568e315b3603f48c308d7c",
+      "baseRef": "main",
+      "mergeCommitSha": "4511b277d3a4d7cef3937999c5d0533692d82ade"
+    },
+    {
+      "id": 4787092711,
+      "number": 27,
+      "title": "PR 27: Opt-in ASCII-armored signed text and file deliveries",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/27",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T12:53:28.000Z",
+      "updatedAt": "2026-10-08T13:02:38.000Z",
+      "closedAt": "2026-10-08T13:02:38.000Z",
+      "mergedAt": "2026-10-08T13:02:38.000Z",
+      "headSha": "19107681d400770fd752ae5ed32482351c4f2d22",
+      "baseRef": "main",
+      "mergeCommitSha": "567e84638d7b2495f0a32e831e90fc31f1c68671"
+    },
+    {
+      "id": 4783186862,
+      "number": 26,
+      "title": "PR 26: Real-process encrypted attachment regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/26",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T07:07:46.000Z",
+      "updatedAt": "2026-10-08T12:48:57.000Z",
+      "closedAt": "2026-10-08T12:48:57.000Z",
+      "mergedAt": "2026-10-08T12:48:57.000Z",
+      "headSha": "288050c079bd36610f2289cca45375bdaf80157d",
+      "baseRef": "main",
+      "mergeCommitSha": "78b80febb1e2de72f349f95409738d330ac8c559"
+    },
+    {
+      "id": 4783169292,
+      "number": 25,
+      "title": "PR 25: Signed encrypted file delivery from CLI",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/25",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T07:06:07.000Z",
+      "updatedAt": "2026-10-08T07:07:59.000Z",
+      "closedAt": "2026-10-08T07:07:59.000Z",
+      "mergedAt": "2026-10-08T07:07:59.000Z",
+      "headSha": "87eba1899ce9c0b14f60edc9a1c70a94c6b28a5a",
+      "baseRef": "main",
+      "mergeCommitSha": "27a03753c98363caaaf965a85d87c1a8f073cab0"
+    },
+    {
+      "id": 4783125574,
+      "number": 24,
+      "title": "PR 24: End-to-end signed delivery CLI regression tests",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/24",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T07:01:57.000Z",
+      "updatedAt": "2026-10-08T07:06:23.000Z",
+      "closedAt": "2026-10-08T07:06:22.000Z",
+      "mergedAt": "2026-10-08T07:06:22.000Z",
+      "headSha": "6ae91df81ff83b179ed31375a600af5699a6d7cf",
+      "baseRef": "main",
+      "mergeCommitSha": "b4d3b714cdc4e526ba36db60c7bfaa080ee9c667"
+    },
+    {
+      "id": 4783086061,
+      "number": 23,
+      "title": "PR 23: Signed text encryption and verified CLI opening",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/23",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T06:58:20.000Z",
+      "updatedAt": "2026-10-08T07:01:42.000Z",
+      "closedAt": "2026-10-08T07:01:41.000Z",
+      "mergedAt": "2026-10-08T07:01:41.000Z",
+      "headSha": "b781cefb4d421025b3a40072b3ca42ab0f74b171",
+      "baseRef": "main",
+      "mergeCommitSha": "2d32e204b424658c79cca11a23e21cf90d9d04d9"
+    },
+    {
+      "id": 4782764224,
+      "number": 22,
+      "title": "PR 22: Executable local client for identities and verified contacts",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/22",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T06:27:22.000Z",
+      "updatedAt": "2026-10-08T06:33:11.000Z",
+      "closedAt": "2026-10-08T06:33:11.000Z",
+      "mergedAt": "2026-10-08T06:33:11.000Z",
+      "headSha": "110efda46f982302701c9aca78d98894c9123948",
+      "baseRef": "main",
+      "mergeCommitSha": "1592c9d4e343f32adcc016b5a3a77f4735f9b80c"
+    },
+    {
+      "id": 4782631956,
+      "number": 21,
+      "title": "PR 21: Complete encrypted client archives and restart recovery",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/21",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T06:12:53.000Z",
+      "updatedAt": "2026-10-08T06:18:34.000Z",
+      "closedAt": "2026-10-08T06:18:34.000Z",
+      "mergedAt": "2026-10-08T06:18:34.000Z",
+      "headSha": "4114f09f4f0af8f631132bcb8732538b7e28079e",
+      "baseRef": "main",
+      "mergeCommitSha": "d30e64d130bbda612a2e2778608081012552225e"
+    },
+    {
+      "id": 4782520759,
+      "number": 20,
+      "title": "PR 20: Private durable local state storage",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/20",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:59:53.000Z",
+      "updatedAt": "2026-10-08T06:02:42.000Z",
+      "closedAt": "2026-10-08T06:02:42.000Z",
+      "mergedAt": "2026-10-08T06:02:42.000Z",
+      "headSha": "aa4020aa52b0a46f427957f38b0b654ea39cb31a",
+      "baseRef": "main",
+      "mergeCommitSha": "20e453273b5dc1c970ebc3bfc5a237f549cb38f7"
+    },
+    {
+      "id": 4782307266,
+      "number": 19,
+      "title": "PR 19: Vault password changes and durable root retirement",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/19",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:33:58.000Z",
+      "updatedAt": "2026-10-08T05:39:29.000Z",
+      "closedAt": "2026-10-08T05:39:29.000Z",
+      "mergedAt": "2026-10-08T05:39:29.000Z",
+      "headSha": "e0601fd6ff730592755f5d9a7c798f0db41f66e7",
+      "baseRef": "main",
+      "mergeCommitSha": "431054030f333193d4a06d124a8d285f2a064650"
+    },
+    {
+      "id": 4782255371,
+      "number": 18,
+      "title": "PR 18: Encrypted contact book, key-change verification and revocation",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/18",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:27:19.000Z",
+      "updatedAt": "2026-10-08T05:39:02.000Z",
+      "closedAt": "2026-10-08T05:39:02.000Z",
+      "mergedAt": "2026-10-08T05:39:02.000Z",
+      "headSha": "7b3f54d332a6c1783a0341a3692af3c96c451e65",
+      "baseRef": "main",
+      "mergeCommitSha": "664994bece98052089ebfdedefc416973bd11e50"
+    },
+    {
+      "id": 4782182487,
+      "number": 17,
+      "title": "PR 17: Signed client file delivery and portable contact records",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/17",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:18:28.000Z",
+      "updatedAt": "2026-10-08T05:21:31.000Z",
+      "closedAt": "2026-10-08T05:21:31.000Z",
+      "mergedAt": "2026-10-08T05:21:31.000Z",
+      "headSha": "150d4d07dd3ec1152012470551334de0a2865d3b",
+      "baseRef": "main",
+      "mergeCommitSha": "b0c82a0bbe026bb5a63e4ef8e640c8b5be3ef3c1"
+    },
+    {
+      "id": 4782135124,
+      "number": 16,
+      "title": "PR 16: Verified contacts and shared secure client sessions",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/16",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:12:54.000Z",
+      "updatedAt": "2026-10-08T05:15:55.000Z",
+      "closedAt": "2026-10-08T05:15:55.000Z",
+      "mergedAt": "2026-10-08T05:15:55.000Z",
+      "headSha": "c168c3b13acff7b3715d7e931e8d828340a845b0",
+      "baseRef": "main",
+      "mergeCommitSha": "5a526c50f82e12554eece345d007d0a4f7126b7d"
+    },
+    {
+      "id": 4782075944,
+      "number": 15,
+      "title": "PR 15: Encrypted recipient and signer key persistence",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/15",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T05:05:26.000Z",
+      "updatedAt": "2026-10-08T05:06:57.000Z",
+      "closedAt": "2026-10-08T05:06:57.000Z",
+      "mergedAt": "2026-10-08T05:06:57.000Z",
+      "headSha": "69a31c49b9047053991ce706a72556f66769985d",
+      "baseRef": "main",
+      "mergeCommitSha": "f9f645a7e132f226acc0941591286fa734f06cce"
+    },
+    {
+      "id": 4782029129,
+      "number": 14,
+      "title": "PR 14: Password-unlocked software vault and encrypted local state",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/14",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T04:59:30.000Z",
+      "updatedAt": "2026-10-08T05:00:59.000Z",
+      "closedAt": "2026-10-08T05:00:59.000Z",
+      "mergedAt": "2026-10-08T05:00:59.000Z",
+      "headSha": "9a2fd3fb3339276aec264860acf2448bcbb9ca90",
+      "baseRef": "main",
+      "mergeCommitSha": "11b0bd9b180c9ecdc5c73b5fdd09c217b18a492a"
+    },
+    {
+      "id": 4781827145,
+      "number": 13,
+      "title": "PR 13: Portable signed Capsule deliveries and transport encodings",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/13",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T04:34:07.000Z",
+      "updatedAt": "2026-10-08T04:35:08.000Z",
+      "closedAt": "2026-10-08T04:35:07.000Z",
+      "mergedAt": "2026-10-08T04:35:07.000Z",
+      "headSha": "5b3c0019cdcbb42b8149bbba6b3c59d63b299f00",
+      "baseRef": "main",
+      "mergeCommitSha": "00c18e9598aba71f1f64100703c89df52de9576b"
+    },
+    {
+      "id": 4781794555,
+      "number": 12,
+      "title": "PR 12: Context-bound Capsule signatures and provenance",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/12",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T04:29:56.000Z",
+      "updatedAt": "2026-10-08T04:30:56.000Z",
+      "closedAt": "2026-10-08T04:30:56.000Z",
+      "mergedAt": "2026-10-08T04:30:56.000Z",
+      "headSha": "a72f198ac7755fddb351a1cf5029b52e9bd8f05e",
+      "baseRef": "main",
+      "mergeCommitSha": "6133239cde7f29c8fe9b19617c1b172d09bf578b"
+    },
+    {
+      "id": 4781756806,
+      "number": 11,
+      "title": "PR 11: Authenticated multi-recipient text and file Capsules",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/11",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T04:25:11.000Z",
+      "updatedAt": "2026-10-08T04:25:49.000Z",
+      "closedAt": "2026-10-08T04:25:49.000Z",
+      "mergedAt": "2026-10-08T04:25:49.000Z",
+      "headSha": "5c9d6813f985a2f42cc44cf97486a865e1c638e4",
+      "baseRef": "main",
+      "mergeCommitSha": "89e53f642a652b7777aae7656ff87e3c06a2c625"
+    },
+    {
+      "id": 4780528959,
+      "number": 10,
+      "title": "PR 10: File and attachment Capsule encryption",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/10",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T01:27:40.000Z",
+      "updatedAt": "2026-10-08T01:55:10.000Z",
+      "closedAt": "2026-10-08T01:55:10.000Z",
+      "mergedAt": "2026-10-08T01:55:10.000Z",
+      "headSha": "6b728888b9dc82a02c03ca630e622e2ee24d7d73",
+      "baseRef": "main",
+      "mergeCommitSha": "5b1b0e043d76b7d0c1346e0b9592f27c03c00366"
+    },
+    {
+      "id": 4780457502,
+      "number": 9,
+      "title": "PR 9: Text and message Capsule encryption",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/9",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T01:16:46.000Z",
+      "updatedAt": "2026-10-08T01:55:00.000Z",
+      "closedAt": "2026-10-08T01:55:00.000Z",
+      "mergedAt": "2026-10-08T01:55:00.000Z",
+      "headSha": "fecb6565c5ef4bf0deceaa0e9c2c8ee0c55fb932",
+      "baseRef": "main",
+      "mergeCommitSha": "1cd26fa58affcceb76cd03a9c472982a97fa9172"
+    },
+    {
+      "id": 4780393861,
+      "number": 8,
+      "title": "PR 8: E2E Capsule universal encrypted-envelope format",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/8",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T01:07:36.000Z",
+      "updatedAt": "2026-10-08T01:54:45.000Z",
+      "closedAt": "2026-10-08T01:54:45.000Z",
+      "mergedAt": "2026-10-08T01:54:45.000Z",
+      "headSha": "c79428126ddce17a4800fb91d6ec7d00e80dabba",
+      "baseRef": "main",
+      "mergeCommitSha": "b20021246cd9e48e8f3321f9d475c5dde3d1a073"
+    },
+    {
+      "id": 4780364458,
+      "number": 7,
+      "title": "PR 7: Recovery, backup, and device-loss workflows",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/7",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T01:03:11.000Z",
+      "updatedAt": "2026-10-08T01:07:05.000Z",
+      "closedAt": "2026-10-08T01:07:05.000Z",
+      "mergedAt": "2026-10-08T01:07:05.000Z",
+      "headSha": "e8755c7b85d0f18e8d91452419f4e02c7c65ab55",
+      "baseRef": "main",
+      "mergeCommitSha": "002e61d76a5b949c4ca34f8c1cb2a730d4bca2d8"
+    },
+    {
+      "id": 4780341586,
+      "number": 6,
+      "title": "PR 6: Key directory, discovery, and transparency client",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/6",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:59:40.000Z",
+      "updatedAt": "2026-10-08T01:06:54.000Z",
+      "closedAt": "2026-10-08T01:06:54.000Z",
+      "mergedAt": "2026-10-08T01:06:54.000Z",
+      "headSha": "b067506f5708c142111780b2890ed977697b25a8",
+      "baseRef": "main",
+      "mergeCommitSha": "3bd6306f2e929e25ff8dea08c44bfcc754fcfb0f"
+    },
+    {
+      "id": 4780326144,
+      "number": 5,
+      "title": "PR 5: Device enrollment, QR pairing, and verification",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/5",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:57:16.000Z",
+      "updatedAt": "2026-10-08T01:06:44.000Z",
+      "closedAt": "2026-10-08T01:06:43.000Z",
+      "mergedAt": "2026-10-08T01:06:43.000Z",
+      "headSha": "b9ef420c70f1af7e594695bd6864fb61fd9fd3e1",
+      "baseRef": "main",
+      "mergeCommitSha": "22f3dd24bc0d21ba73357b6b654f402990e8fa42"
+    },
+    {
+      "id": 4780307630,
+      "number": 4,
+      "title": "PR 4: Secure local key storage and hardware-backed profile integration",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/4",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:54:36.000Z",
+      "updatedAt": "2026-10-08T01:06:33.000Z",
+      "closedAt": "2026-10-08T01:06:33.000Z",
+      "mergedAt": "2026-10-08T01:06:32.000Z",
+      "headSha": "61007ea2acb946874af14b8d8a63fb525d1bc710",
+      "baseRef": "main",
+      "mergeCommitSha": "a63c75089f5dbd7c8b6b13ca086cfeb02a1bf614"
+    },
+    {
+      "id": 4780266929,
+      "number": 3,
+      "title": "PR 3: Universal identity, accounts, devices, and recipient addressing",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/3",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:48:20.000Z",
+      "updatedAt": "2026-10-08T00:50:10.000Z",
+      "closedAt": "2026-10-08T00:50:10.000Z",
+      "mergedAt": "2026-10-08T00:50:10.000Z",
+      "headSha": "a9d19325c2bec27ac53462462c2d61620593254b",
+      "baseRef": "pr-2-core-runtime",
+      "mergeCommitSha": "49c1f44b6be9b78a81c66c6c2c7e1ff67f5d90a2"
+    },
+    {
+      "id": 4780259746,
+      "number": 2,
+      "title": "PR 2: Core cryptographic runtime and platform abstraction",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/2",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:47:14.000Z",
+      "updatedAt": "2026-10-08T00:50:01.000Z",
+      "closedAt": "2026-10-08T00:50:01.000Z",
+      "mergedAt": "2026-10-08T00:50:01.000Z",
+      "headSha": "e00c679d80fbadc113ad8c8fa7a46f39b26e3e16",
+      "baseRef": "pr-1-suite-foundation",
+      "mergeCommitSha": "ba2378eeeaacad93e272ad1bae2e0ffd80c60d25"
+    },
+    {
+      "id": 4780252852,
+      "number": 1,
+      "title": "PR 1: Suite architecture, monorepo foundation, and E2EESA binding",
+      "url": "https://github.com/neophilism/End-To-End-Everywhere-Suite/pull/1",
+      "state": "closed",
+      "draft": false,
+      "createdAt": "2026-10-08T00:46:09.000Z",
+      "updatedAt": "2026-10-08T00:49:54.000Z",
+      "closedAt": "2026-10-08T00:49:53.000Z",
+      "mergedAt": "2026-10-08T00:49:53.000Z",
+      "headSha": "452b240d0ce027d3355535795a8140a683c8e992",
+      "baseRef": "main",
+      "mergeCommitSha": "ab11654f1b0a77ca3b428a9fb70173e8cc045c30"
+    }
+  ]
+}
