@@ -532,5 +532,7 @@
       "origin": "addition",
       "github_prs": []
     }
-  ]
+  ],
+  "_canonicalRoadmap": "registry/roadmap.json",
+  "_notice": "Historical extended roadmap. Edit registry/roadmap.json for current PR totals and progress links."
 }
