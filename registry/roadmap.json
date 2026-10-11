@@ -1,0 +1,459 @@
+{
+  "repository": "neophilism/End-To-End-Everywhere-Suite",
+  "title": "End-To-End-Everywhere Suite",
+  "version": 1,
+  "planVerified": true,
+  "plannedPrCount": 61,
+  "sourceFiles": [
+    "docs/roadmap.json",
+    ".exechub/project.yml",
+    "docs/DEVELOPMENT_PLAN.md",
+    ".exechub/approved-pr-mapping.json"
+  ],
+  "scopeNote": "Expanded implementation ledger from docs/roadmap.json; historical 40-unit original manifest remains a subset, not the full current denominator.",
+  "milestones": [
+    {
+      "id": "E2ES-001",
+      "title": "PR 1: Suite architecture, monorepo foundation, and E2EESA binding",
+      "origin": "original",
+      "pullRequests": [
+        1
+      ]
+    },
+    {
+      "id": "E2ES-002",
+      "title": "PR 2: Core cryptographic runtime and platform abstraction",
+      "origin": "original",
+      "pullRequests": [
+        2
+      ]
+    },
+    {
+      "id": "E2ES-003",
+      "title": "PR 3: Universal identity, accounts, devices, and recipient addressing",
+      "origin": "original",
+      "pullRequests": [
+        3
+      ]
+    },
+    {
+      "id": "E2ES-004",
+      "title": "PR 4: Secure local key storage and hardware-backed profile integration",
+      "origin": "original",
+      "pullRequests": [
+        4
+      ]
+    },
+    {
+      "id": "E2ES-005",
+      "title": "PR 5: Device enrollment, QR pairing, and verification",
+      "origin": "original",
+      "pullRequests": [
+        5
+      ]
+    },
+    {
+      "id": "E2ES-006",
+      "title": "PR 6: Key directory, discovery, and transparency client",
+      "origin": "original",
+      "pullRequests": [
+        6
+      ]
+    },
+    {
+      "id": "E2ES-007",
+      "title": "PR 7: Recovery, backup, and device-loss workflows",
+      "origin": "original",
+      "pullRequests": [
+        7
+      ]
+    },
+    {
+      "id": "E2ES-008",
+      "title": "PR 8: E2E Capsule universal encrypted-envelope format",
+      "origin": "original",
+      "pullRequests": [
+        8
+      ]
+    },
+    {
+      "id": "E2ES-009",
+      "title": "PR 9: Text and message Capsule encryption",
+      "origin": "original",
+      "pullRequests": [
+        9
+      ]
+    },
+    {
+      "id": "E2ES-010",
+      "title": "PR 10: File and attachment Capsule encryption",
+      "origin": "original",
+      "pullRequests": [
+        10
+      ]
+    },
+    {
+      "id": "E2ES-011",
+      "title": "PR 11: Authenticated multi-recipient text and file Capsules",
+      "origin": "original",
+      "pullRequests": [
+        11
+      ]
+    },
+    {
+      "id": "E2ES-012",
+      "title": "PR 12: Context-bound Capsule signatures and provenance",
+      "origin": "original",
+      "pullRequests": [
+        12
+      ]
+    },
+    {
+      "id": "E2ES-013",
+      "title": "PR 13: Portable signed Capsule deliveries and transport encodings",
+      "origin": "original",
+      "pullRequests": [
+        13
+      ]
+    },
+    {
+      "id": "E2ES-014",
+      "title": "PR 14: Password-unlocked software vault and encrypted local state",
+      "origin": "original",
+      "pullRequests": [
+        14
+      ]
+    },
+    {
+      "id": "E2ES-015",
+      "title": "PR 15: Encrypted recipient and signer key persistence",
+      "origin": "original",
+      "pullRequests": [
+        15
+      ]
+    },
+    {
+      "id": "E2ES-016",
+      "title": "PR 16: Verified contacts and shared secure client sessions",
+      "origin": "original",
+      "pullRequests": [
+        16
+      ]
+    },
+    {
+      "id": "E2ES-017",
+      "title": "PR 17: Signed client file delivery and portable contact records",
+      "origin": "original",
+      "pullRequests": [
+        17
+      ]
+    },
+    {
+      "id": "E2ES-018",
+      "title": "PR 18: Encrypted contact book, key-change verification and revocation",
+      "origin": "original",
+      "pullRequests": [
+        18
+      ]
+    },
+    {
+      "id": "E2ES-019",
+      "title": "PR 19: Vault password changes and durable root retirement",
+      "origin": "original",
+      "pullRequests": [
+        19
+      ]
+    },
+    {
+      "id": "E2ES-020",
+      "title": "PR 20: Private durable local state storage",
+      "origin": "original",
+      "pullRequests": [
+        20
+      ]
+    },
+    {
+      "id": "E2ES-021",
+      "title": "PR 21: Complete encrypted client archives and restart recovery",
+      "origin": "original",
+      "pullRequests": [
+        21
+      ]
+    },
+    {
+      "id": "E2ES-022",
+      "title": "PR 22: Executable local client for identities and verified contacts",
+      "origin": "original",
+      "pullRequests": [
+        22
+      ]
+    },
+    {
+      "id": "E2ES-023",
+      "title": "PR 23: Signed text encryption and verified CLI opening",
+      "origin": "original",
+      "pullRequests": [
+        23
+      ]
+    },
+    {
+      "id": "E2ES-024",
+      "title": "PR 24: End-to-end signed delivery CLI regression tests",
+      "origin": "original",
+      "pullRequests": [
+        24
+      ]
+    },
+    {
+      "id": "E2ES-025",
+      "title": "PR 25: Signed encrypted file delivery from CLI",
+      "origin": "original",
+      "pullRequests": [
+        25
+      ]
+    },
+    {
+      "id": "E2ES-026",
+      "title": "PR 26: Real-process encrypted attachment regression tests",
+      "origin": "original",
+      "pullRequests": [
+        26
+      ]
+    },
+    {
+      "id": "E2ES-027",
+      "title": "PR 27: Opt-in ASCII-armored signed text and file deliveries",
+      "origin": "original",
+      "pullRequests": [
+        27
+      ]
+    },
+    {
+      "id": "E2ES-028",
+      "title": "PR 28: Real-process ASCII-armored delivery tests",
+      "origin": "original",
+      "pullRequests": [
+        28
+      ]
+    },
+    {
+      "id": "E2ES-029",
+      "title": "PR 29: Strict small-Capsule local URI delivery mode",
+      "origin": "original",
+      "pullRequests": [
+        29
+      ]
+    },
+    {
+      "id": "E2ES-030",
+      "title": "PR 30: Bounded local URI delivery and failure-mode regression tests",
+      "origin": "original",
+      "pullRequests": [
+        30
+      ]
+    },
+    {
+      "id": "E2ES-031",
+      "title": "PR 31: Encrypt and open personal notes to your own local identity",
+      "origin": "original",
+      "pullRequests": [
+        31
+      ]
+    },
+    {
+      "id": "E2ES-032",
+      "title": "PR 32: Self-encrypted notes end-to-end CLI regression tests",
+      "origin": "original",
+      "pullRequests": [
+        32
+      ]
+    },
+    {
+      "id": "E2ES-033",
+      "title": "PR 33: Encrypt and open files for your own identity",
+      "origin": "original",
+      "pullRequests": [
+        33
+      ]
+    },
+    {
+      "id": "E2ES-034",
+      "title": "PR 34: Personal encrypted file real-process regression tests",
+      "origin": "original",
+      "pullRequests": [
+        34
+      ]
+    },
+    {
+      "id": "E2ES-035",
+      "title": "PR 35: Public contact card file export and import",
+      "origin": "original",
+      "pullRequests": [
+        35
+      ]
+    },
+    {
+      "id": "E2ES-036",
+      "title": "PR 36: End-to-end contact file exchange and trust regression tests",
+      "origin": "original",
+      "pullRequests": [
+        36
+      ]
+    },
+    {
+      "id": "E2ES-037",
+      "title": "PR 37: Opt-in encrypted sent copies with verified recipients",
+      "origin": "original",
+      "pullRequests": [
+        37
+      ]
+    },
+    {
+      "id": "E2ES-038",
+      "title": "PR 38: Real-process opt-in sent-copy encryption regression tests",
+      "origin": "original",
+      "pullRequests": [
+        38
+      ]
+    },
+    {
+      "id": "E2ES-039",
+      "title": "PR 39: Verified multi-recipient delivery from bounded ID list files",
+      "origin": "original",
+      "pullRequests": [
+        39
+      ]
+    },
+    {
+      "id": "E2ES-040",
+      "title": "PR 40: Verified multi-recipient roster and failure-mode integration tests",
+      "origin": "original",
+      "pullRequests": [
+        40
+      ]
+    },
+    {
+      "id": "E2ES-041",
+      "title": "PR 41: Engine Room registration and honest baseline monitoring",
+      "origin": "addition",
+      "pullRequests": [
+        41
+      ]
+    },
+    {
+      "id": "E2ES-042",
+      "title": "PR 42: Pinned E2EESA registry compatibility gate",
+      "origin": "addition",
+      "pullRequests": [
+        42
+      ]
+    },
+    {
+      "id": "E2ES-043",
+      "title": "PR 43: macOS/Linux pre-alpha CLI smoke tests and downloadable CI artifacts",
+      "origin": "addition",
+      "pullRequests": [
+        43
+      ]
+    },
+    {
+      "id": "E2ES-044",
+      "title": "PR 44: Public Suite information site, deployment blueprint and claim checks",
+      "origin": "addition",
+      "pullRequests": [
+        44
+      ]
+    },
+    {
+      "id": "E2ES-045",
+      "title": "PR 45: Machine-readable CLI capability and security-limitation inventory",
+      "origin": "addition",
+      "pullRequests": [
+        45
+      ]
+    },
+    {
+      "id": "E2ES-046",
+      "title": "PR 46: Engine Room live roadmap with explicit PR evidence and extension backlog",
+      "origin": "addition",
+      "pullRequests": [
+        46
+      ]
+    },
+    {
+      "id": "E2ES-047",
+      "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-048",
+      "title": "Cross-client device pairing and revocation interfaces",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-049",
+      "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-050",
+      "title": "Safe replay-rejection state, persistence and failure-mode testing",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-051",
+      "title": "Stable client API and developer SDK",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-052",
+      "title": "End-user desktop encrypted file vault",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-053",
+      "title": "Desktop notes, contacts and QR verification interface",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-054",
+      "title": "Ciphertext-only relay and offline delivery protocol",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-055",
+      "title": "Device-safe ciphertext synchronization with conflict handling",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-056",
+      "title": "Signed app updates and secure distribution channels",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-057",
+      "title": "Integrated end-user messaging UI and interoperability tests",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-058",
+      "title": "Mobile vault and messenger interfaces",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-059",
+      "title": "Email wrapper and browser integration",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-060",
+      "title": "Enterprise policy controls without plaintext access",
+      "origin": "addition"
+    },
+    {
+      "id": "E2ES-061",
+      "title": "Security audit, reproducible builds and scoped conformance evidence",
+      "origin": "addition"
+    }
+  ]
+}
