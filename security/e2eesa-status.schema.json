@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repository E2EESA development-status record",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "repository",
+    "updatedAt",
+    "standard",
+    "inventory",
+    "source",
+    "implementation",
+    "testing",
+    "independentReview"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^neophilism/[A-Za-z0-9_.-]+$"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "standard": {
+      "type": "object",
+      "required": [
+        "repository",
+        "commit",
+        "basis"
+      ],
+      "properties": {
+        "repository": {
+          "const": "neophilism/End-To-End-Everywhere-Security-Architecture-Standard"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "basis": {
+          "enum": [
+            "development",
+            "candidate",
+            "production"
+          ]
+        }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "required": [
+        "path",
+        "reviewed"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "reviewed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "digest"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "git-blob-manifest-sha256-v1"
+        },
+        "digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "assessedCommit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "required": [
+        "complete",
+        "evidence",
+        "pending",
+        "controls"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "state",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "state": {
+                "const": "implemented"
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "required": [
+        "complete",
+        "evidence",
+        "pending",
+        "checks"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "status",
+              "sourceDigest",
+              "completedAt",
+              "toolDigest",
+              "configurationDigest",
+              "report"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "unit",
+                  "adversarial",
+                  "fuzz",
+                  "secret-scan",
+                  "dependency-scan",
+                  "static-analysis"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "passed",
+                  "failed",
+                  "skipped",
+                  "cancelled",
+                  "running"
+                ]
+              },
+              "sourceDigest": {
+                "type": "string"
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "toolDigest": {
+                "type": "string"
+              },
+              "configurationDigest": {
+                "type": "string"
+              },
+              "report": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "independentReview": {
+      "type": "object",
+      "required": [
+        "complete",
+        "evidence",
+        "pending",
+        "reviewers",
+        "ownerAccepted",
+        "sourceDigest"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "independent",
+              "qualified"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "independent": {
+                "type": "boolean"
+              },
+              "qualified": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "ownerAccepted": {
+          "type": "boolean"
+        },
+        "sourceDigest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "existingSecurityEvidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nextActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
