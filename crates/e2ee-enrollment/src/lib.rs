@@ -341,9 +341,11 @@ impl DeviceRoster {
     }
 
     pub fn authorization(&self, endpoint_id: &EndpointId) -> Option<&DeviceAuthorization> {
-        self.is_authorized(endpoint_id)
-            .then(|| self.authorizations.get(endpoint_id))
-            .flatten()
+        if self.is_authorized(endpoint_id) {
+            self.authorizations.get(endpoint_id)
+        } else {
+            None
+        }
     }
 
     pub fn revocation(&self, endpoint_id: &EndpointId) -> Option<&DeviceRevocation> {
@@ -509,8 +511,8 @@ mod tests {
             Err(EnrollmentError::EndpointReuse)
         ));
     }
-    fn finalized_session(mut pairing_offer: PairingOffer) -> PairingSession {
-        let mut session = PairingSession::new(pairing_offer.clone(), 110).unwrap();
+    fn finalized_session(pairing_offer: PairingOffer) -> PairingSession {
+        let mut session = PairingSession::new(pairing_offer, 110).unwrap();
         session.accept(111).unwrap();
         let digest = VerificationDigest::new([9; 32]);
         session
@@ -520,7 +522,6 @@ mod tests {
             .submit_verification(VerificationSide::NewEndpoint, digest, 113)
             .unwrap();
         session.finalize(114).unwrap();
-        pairing_offer.challenge.fill(0);
         session
     }
 
@@ -607,6 +608,4 @@ mod tests {
             Err(DeviceRosterError::AuthorizerNotAuthorized)
         );
     }
-
-
 }
