@@ -1,0 +1,85 @@
+version: 2.1
+
+# Full Rust workspace, pinned-standard compatibility, Linux+macOS pre-alpha
+# packaging and public site labeling. Test artifacts are NOT signed releases.
+jobs:
+  rust-and-prealpha-linux:
+    docker:
+      - image: cimg/rust:latest
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Rust formatting, clippy, exact-lock tests and builds
+          command: |
+            rustup component add rustfmt clippy
+            cargo fmt --all -- --check
+            cargo clippy --workspace --all-targets --locked -- -D warnings
+            cargo test --workspace --all-targets --locked
+            cargo build --workspace --all-targets --locked
+      - run:
+          name: Compile and package unsigned Linux CLI
+          command: |
+            cargo build -p e2ee-cli --release --locked
+            sh scripts/package-prealpha.sh target/release/e2ee linux-x64 dist
+            tar tzf dist/e2ee-prealpha-linux-x64.tar.gz
+      - store_artifacts:
+          path: dist
+
+  prealpha-macos:
+    macos:
+      xcode: 26.3.0
+    resource_class: m4pro.medium
+    steps:
+      - checkout
+      - run:
+          name: Install Rust stable and run real macOS workspace tests
+          command: |
+            if ! command -v cargo >/dev/null 2>&1; then
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+              echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$BASH_ENV"
+              export PATH="$HOME/.cargo/bin:$PATH"
+            fi
+            cargo test --workspace --all-targets --locked
+            cargo build -p e2ee-cli --release --locked
+            sh scripts/package-prealpha.sh target/release/e2ee darwin-arm64 dist
+            tar tzf dist/e2ee-prealpha-darwin-arm64.tar.gz
+      - store_artifacts:
+          path: dist
+
+  standard-binding-and-public-site:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Fetch pinned upstream specification used by the suite
+          command: |
+            git clone https://github.com/neophilism/End-To-End-Everywhere-Security-Architecture-Standard.git .e2eesa-upstream
+            git -C .e2eesa-upstream checkout --detach cef6052bdb3bcf45ca0bd3e29d18a519d8f041e0
+            test "$(git -C .e2eesa-upstream rev-parse HEAD)" = cef6052bdb3bcf45ca0bd3e29d18a519d8f041e0
+      - run:
+          name: Binding inventory and negative regression checks
+          command: |
+            python3 scripts/check_e2eesa_binding.py --standard-root .e2eesa-upstream
+            python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - run:
+          name: Verify static site's security labeling
+          command: python3 scripts/check-public-site.py
+
+  security-status-record:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    steps:
+      - checkout
+      - run: python3 scripts/validate_e2eesa_status.py
+
+workflows:
+  full-ci:
+    jobs:
+      - rust-and-prealpha-linux
+      - prealpha-macos
+      - standard-binding-and-public-site
+      - security-status-record
