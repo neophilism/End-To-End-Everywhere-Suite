@@ -37,6 +37,8 @@ contacts, sender-checked text delivery, encrypted key persistence and auto-lock.
 The same controller supports [files and portable contact/state records](docs/client-files-and-portability.md).
 An [encrypted contact book](docs/contact-lifecycle.md) now blocks unverified,
 changed and revoked contacts and requires explicit fingerprint re-verification.
+Finalized two-sided pairing can now issue a [device authorization receipt](docs/device-pairing-revocation.md)
+for a monotonic roster with fail-closed endpoint revocation.
 The vault supports [passphrase changes and permanent root-handle retirement](docs/vault-credential-lifecycle.md).
 A [private durable file adapter](docs/private-state-storage.md) now supports whole-record
 atomic commits, exclusive writer locks and stale-write detection on Unix hosts.
