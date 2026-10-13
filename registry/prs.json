@@ -1,9 +1,17 @@
 {
-  "schemaVersion": 1,
   "repository": "neophilism/End-To-End-Everywhere-Suite",
-  "roadmapVersion": 1,
+  "title": "End-To-End-Everywhere Suite",
   "planVerified": true,
   "plannedPrCount": 61,
+  "sourceFiles": [
+    "docs/roadmap.json",
+    ".exechub/project.yml",
+    "docs/DEVELOPMENT_PLAN.md",
+    ".exechub/approved-pr-mapping.json"
+  ],
+  "scopeNote": "Expanded implementation ledger from docs/roadmap.json; historical 40-unit original manifest remains a subset, not the full current denominator.",
+  "schemaVersion": 1,
+  "roadmapVersion": 1,
   "observedAt": "2026-10-11T17:40:41.158Z",
   "units": [
     {
@@ -12,7 +20,10 @@
       "origin": "original",
       "prs": [
         1
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-002",
@@ -20,7 +31,10 @@
       "origin": "original",
       "prs": [
         2
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-003",
@@ -28,7 +42,10 @@
       "origin": "original",
       "prs": [
         3
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-004",
@@ -36,7 +53,10 @@
       "origin": "original",
       "prs": [
         4
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-005",
@@ -44,7 +64,10 @@
       "origin": "original",
       "prs": [
         5
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-006",
@@ -52,7 +75,10 @@
       "origin": "original",
       "prs": [
         6
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-007",
@@ -60,7 +86,10 @@
       "origin": "original",
       "prs": [
         7
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-008",
@@ -68,7 +97,10 @@
       "origin": "original",
       "prs": [
         8
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-009",
@@ -76,7 +108,10 @@
       "origin": "original",
       "prs": [
         9
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-010",
@@ -84,7 +119,10 @@
       "origin": "original",
       "prs": [
         10
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-011",
@@ -92,7 +130,10 @@
       "origin": "original",
       "prs": [
         11
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-012",
@@ -100,7 +141,10 @@
       "origin": "original",
       "prs": [
         12
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-013",
@@ -108,7 +152,10 @@
       "origin": "original",
       "prs": [
         13
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-014",
@@ -116,7 +163,10 @@
       "origin": "original",
       "prs": [
         14
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-015",
@@ -124,7 +174,10 @@
       "origin": "original",
       "prs": [
         15
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-016",
@@ -132,7 +185,10 @@
       "origin": "original",
       "prs": [
         16
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-017",
@@ -140,7 +196,10 @@
       "origin": "original",
       "prs": [
         17
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-018",
@@ -148,7 +207,10 @@
       "origin": "original",
       "prs": [
         18
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-019",
@@ -156,7 +218,10 @@
       "origin": "original",
       "prs": [
         19
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-020",
@@ -164,7 +229,10 @@
       "origin": "original",
       "prs": [
         20
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-021",
@@ -172,7 +240,10 @@
       "origin": "original",
       "prs": [
         21
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-022",
@@ -180,7 +251,10 @@
       "origin": "original",
       "prs": [
         22
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-023",
@@ -188,7 +262,10 @@
       "origin": "original",
       "prs": [
         23
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-024",
@@ -196,7 +273,10 @@
       "origin": "original",
       "prs": [
         24
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-025",
@@ -204,7 +284,10 @@
       "origin": "original",
       "prs": [
         25
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-026",
@@ -212,7 +295,10 @@
       "origin": "original",
       "prs": [
         26
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-027",
@@ -220,7 +306,10 @@
       "origin": "original",
       "prs": [
         27
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-028",
@@ -228,7 +317,10 @@
       "origin": "original",
       "prs": [
         28
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-029",
@@ -236,7 +328,10 @@
       "origin": "original",
       "prs": [
         29
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-030",
@@ -244,7 +339,10 @@
       "origin": "original",
       "prs": [
         30
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-031",
@@ -252,7 +350,10 @@
       "origin": "original",
       "prs": [
         31
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-032",
@@ -260,7 +361,10 @@
       "origin": "original",
       "prs": [
         32
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-033",
@@ -268,7 +372,10 @@
       "origin": "original",
       "prs": [
         33
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-034",
@@ -276,7 +383,10 @@
       "origin": "original",
       "prs": [
         34
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-035",
@@ -284,7 +394,10 @@
       "origin": "original",
       "prs": [
         35
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-036",
@@ -292,7 +405,10 @@
       "origin": "original",
       "prs": [
         36
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-037",
@@ -300,7 +416,10 @@
       "origin": "original",
       "prs": [
         37
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-038",
@@ -308,7 +427,10 @@
       "origin": "original",
       "prs": [
         38
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-039",
@@ -316,7 +438,10 @@
       "origin": "original",
       "prs": [
         39
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-040",
@@ -324,7 +449,10 @@
       "origin": "original",
       "prs": [
         40
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-041",
@@ -332,7 +460,10 @@
       "origin": "addition",
       "prs": [
         41
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-042",
@@ -340,7 +471,10 @@
       "origin": "addition",
       "prs": [
         42
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-043",
@@ -348,7 +482,10 @@
       "origin": "addition",
       "prs": [
         43
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-044",
@@ -356,7 +493,10 @@
       "origin": "addition",
       "prs": [
         44
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-045",
@@ -364,7 +504,10 @@
       "origin": "addition",
       "prs": [
         45
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-046",
@@ -372,97 +515,145 @@
       "origin": "addition",
       "prs": [
         46
-      ]
+      ],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-047",
       "title": "Platform key-store adapters with explicit hardware attestation and fail-closed fallbacks",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-048",
       "title": "Cross-client device pairing and revocation interfaces",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-049",
       "title": "Reviewed, interoperable forward-secret pairwise sessions (no bespoke ratchet)",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-050",
       "title": "Safe replay-rejection state, persistence and failure-mode testing",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-051",
       "title": "Stable client API and developer SDK",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-052",
       "title": "End-user desktop encrypted file vault",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-053",
       "title": "Desktop notes, contacts and QR verification interface",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-054",
       "title": "Ciphertext-only relay and offline delivery protocol",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-055",
       "title": "Device-safe ciphertext synchronization with conflict handling",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-056",
       "title": "Signed app updates and secure distribution channels",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-057",
       "title": "Integrated end-user messaging UI and interoperability tests",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-058",
       "title": "Mobile vault and messenger interfaces",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-059",
       "title": "Email wrapper and browser integration",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-060",
       "title": "Enterprise policy controls without plaintext access",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "E2ES-061",
       "title": "Security audit, reproducible builds and scoped conformance evidence",
       "origin": "addition",
-      "prs": []
+      "prs": [],
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     }
   ],
   "pullRequests": [
