@@ -50,10 +50,7 @@ pub trait PlatformBridge {
         request: &ProvisionRequest,
     ) -> Result<AttestedSecret, KeyStoreError>;
 
-    fn metadata_attested(
-        &self,
-        handle: &SecretHandle,
-    ) -> Result<AttestedSecret, KeyStoreError>;
+    fn metadata_attested(&self, handle: &SecretHandle) -> Result<AttestedSecret, KeyStoreError>;
 }
 
 pub struct PlatformKeyStore<B> {
@@ -95,10 +92,7 @@ impl<B: PlatformBridge> SecureKeyStore for PlatformKeyStore<B> {
         self.bridge.backend_kind()
     }
 
-    fn provision(
-        &mut self,
-        request: ProvisionRequest,
-    ) -> Result<SecretMetadata, KeyStoreError> {
+    fn provision(&mut self, request: ProvisionRequest) -> Result<SecretMetadata, KeyStoreError> {
         if &request.required_profile != self.profile() {
             return Err(KeyStoreError::UnsupportedProfile);
         }
@@ -181,8 +175,7 @@ fn validate_platform_profile(
 mod tests {
     use super::*;
     use crate::{
-        SecretClass, HARDWARE_ISOLATED_PROFILE, PLATFORM_KEYSTORE_PROFILE,
-        SOFTWARE_VAULT_PROFILE,
+        SecretClass, HARDWARE_ISOLATED_PROFILE, PLATFORM_KEYSTORE_PROFILE, SOFTWARE_VAULT_PROFILE,
     };
 
     struct Bridge {
@@ -244,10 +237,7 @@ mod tests {
     }
 
     impl Bridge {
-        fn provision_view(
-            &self,
-            handle: &SecretHandle,
-        ) -> Result<AttestedSecret, KeyStoreError> {
+        fn provision_view(&self, handle: &SecretHandle) -> Result<AttestedSecret, KeyStoreError> {
             Ok(self.secret(&ProvisionRequest {
                 handle: handle.clone(),
                 class: SecretClass::DeviceIdentityRoot,
@@ -279,7 +269,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            store.provision(request(PLATFORM_KEYSTORE_PROFILE, 4))
+            store
+                .provision(request(PLATFORM_KEYSTORE_PROFILE, 4))
                 .unwrap()
                 .generation,
             4
