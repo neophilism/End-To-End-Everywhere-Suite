@@ -221,9 +221,7 @@ impl PairingSession {
             source: AuthorizationSource::Pairing {
                 enrollment_id: self.offer.enrollment_id.clone(),
                 authorized_by: self.offer.existing_endpoint_id.clone(),
-                verification_digest: self
-                    .existing_digest
-                    .ok_or(EnrollmentError::InvalidState)?,
+                verification_digest: self.existing_digest.ok_or(EnrollmentError::InvalidState)?,
             },
         })
     }
@@ -242,7 +240,6 @@ impl PairingSession {
         Ok(())
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthorizationSource {
@@ -353,8 +350,7 @@ impl DeviceRoster {
     }
 
     pub fn is_authorized(&self, endpoint_id: &EndpointId) -> bool {
-        self.authorizations.contains_key(endpoint_id)
-            && !self.revocations.contains_key(endpoint_id)
+        self.authorizations.contains_key(endpoint_id) && !self.revocations.contains_key(endpoint_id)
     }
 
     pub fn register_paired(
@@ -594,7 +590,9 @@ mod tests {
             existing.clone(),
             100,
         );
-        roster.register_paired(first.authorization().unwrap()).unwrap();
+        roster
+            .register_paired(first.authorization().unwrap())
+            .unwrap();
         roster.revoke(&revoked, &existing, 120).unwrap();
 
         let mut next_offer = offer();
