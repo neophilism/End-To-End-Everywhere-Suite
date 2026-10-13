@@ -9,6 +9,7 @@
 use e2ee_core::{ProfileId, ProfileParseError};
 use std::fmt;
 
+pub mod platform;
 pub mod software;
 pub mod state;
 
@@ -85,6 +86,8 @@ pub enum KeyStoreError {
     InvalidHandle,
     UnsupportedProfile,
     BackendUnavailable,
+    AttestationUnavailable,
+    AttestationInvalid,
     PolicyViolation,
     RollbackDetected,
     NotFound,
@@ -101,6 +104,8 @@ impl fmt::Display for KeyStoreError {
             Self::InvalidHandle => "secret handle is invalid",
             Self::UnsupportedProfile => "requested secret-storage profile is unsupported",
             Self::BackendUnavailable => "required secure key-store backend is unavailable",
+            Self::AttestationUnavailable => "required platform key attestation is unavailable",
+            Self::AttestationInvalid => "platform key attestation is invalid",
             Self::PolicyViolation => "secure key-store policy was violated",
             Self::RollbackDetected => "secret generation rollback was detected",
             Self::NotFound => "secret handle was not found",
