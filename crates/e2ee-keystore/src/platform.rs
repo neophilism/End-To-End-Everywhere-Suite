@@ -135,7 +135,7 @@ pub fn validate_attestation(
     validate_backend_for_profile(profile, metadata.backend)?;
     validate_generation(minimum_generation, metadata.generation)?;
 
-    if &metadata.handle != &attestation.handle
+    if metadata.handle != attestation.handle
         || metadata.backend != attestation.backend
         || metadata.generation != attestation.generation
         || &attestation.profile != profile
