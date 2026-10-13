@@ -110,7 +110,7 @@ impl<B: PlatformBridge> SecureKeyStore for PlatformKeyStore<B> {
 
     fn metadata(&self, handle: &SecretHandle) -> Result<SecretMetadata, KeyStoreError> {
         let secret = self.bridge.metadata_attested(handle)?;
-        if secret.metadata.handle != *handle {
+        if &secret.metadata.handle != handle {
             return Err(KeyStoreError::AttestationInvalid);
         }
         self.validate(secret, 1)
@@ -141,10 +141,10 @@ pub fn validate_attestation(
     validate_backend_for_profile(profile, metadata.backend)?;
     validate_generation(minimum_generation, metadata.generation)?;
 
-    if metadata.handle != attestation.handle
+    if &metadata.handle != &attestation.handle
         || metadata.backend != attestation.backend
         || metadata.generation != attestation.generation
-        || attestation.profile != *profile
+        || &attestation.profile != profile
         || metadata.export_policy != ExportPolicy::NonExportable
         || attestation.exportable
         || attestation.provider.is_empty()
