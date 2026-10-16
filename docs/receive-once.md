@@ -12,7 +12,7 @@ The E2CA outer container remains version 1. Its authenticated internal payload i
 
 Whole-archive rollback remains a separate threat. Advance an independently trusted `ArchiveAnchor` only after successful commit and require it on restoration. Password-only restoration accepts valid old backups, including backups before receipt creation, and therefore cannot promise rollback-resistant replay rejection. Cloning an endpoint archive creates another copy of that history; device-wide synchronization and concurrent cross-device inbox delivery are separate unfinished capabilities.
 
-Existing `EndpointSession::open_text` and the CLI's archival open commands retain their repeatable decryption behavior. They are useful for reopening saved encrypted material and make no replay-rejection claim. CLI inbox integration is a separate follow-up to this client API.
+Existing `EndpointSession::open_text` and the CLI's archival open commands retain their repeatable decryption behavior. They are useful for reopening saved encrypted material and make no replay-rejection claim. The CLI `receive-text` command selects this boundary explicitly and requires an independently retained archive anchor. Output-file publication remains a subsequent step; a committed receipt does not imply an output file was successfully written.
 
 This feature uses the existing Capsule/signature/HPKE implementation and adds no new encryption protocol or ratchet. It does not provide forward secrecy, post-compromise security, network delivery, account/device synchronization, or E2EESA certification.
 

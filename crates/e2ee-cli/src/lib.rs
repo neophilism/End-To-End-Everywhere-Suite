@@ -53,6 +53,7 @@ Commands:\n\
   passwd                        Change the local unlock passphrase\n\
   seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
   open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\
+  receive-text SENDER CONTEXT INPUT OUTPUT Receive once; requires --anchor\n\
   seal-text-list LIST CONTEXT INPUT OUTPUT Encrypt/sign text to verified IDs in LIST\n\
   seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
   open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\
@@ -98,13 +99,15 @@ pub const CAPABILITIES_JSON: &str = r#"{
     "desktop_or_mobile_gui": false,
     "forward_secret_sessions": false,
     "post_compromise_security": false,
-    "message_replay_protection": false
+    "message_replay_protection": false,
+    "anchored_receive_once_text": true
   },
   "operating_systems": {
     "unix_local_state": true,
     "windows_local_state": false
   },
   "backup_and_rollback": "independent-anchor-needed",
+  "receive_once_scope": "receive-text; signed text; durable anchored local archive; max 4096 receipts",
   "security_certified": false,
   "production_ready": false
 }"#;
@@ -123,6 +126,7 @@ enum Command {
     Passwd,
     SealText(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenText(EndpointId, String, PathBuf, PathBuf),
+    ReceiveText(EndpointId, String, PathBuf, PathBuf),
     SealFile(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenFile(EndpointId, String, PathBuf, PathBuf),
     SealNote(String, PathBuf, PathBuf),
@@ -351,6 +355,12 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["receive-text", sender, context, input, output] => Command::ReceiveText(
+            endpoint(sender)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         ["seal-file", ids, context, input, output] => Command::SealFile(
             recipients(ids)?,
             application_context(context)?.to_owned(),
@@ -395,6 +405,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
         match &command {
             Command::SealText(..)
             | Command::OpenText(..)
+            | Command::ReceiveText(..)
             | Command::SealFile(..)
             | Command::OpenFile(..)
             | Command::SealNote(..)
@@ -403,6 +414,9 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             | Command::OpenSelfFile(..) => {}
             _ => return Err(CliError::Usage),
         }
+    }
+    if matches!(&command, Command::ReceiveText(..)) && anchor.is_none() {
+        return Err(CliError::InvalidAnchor);
     }
     if include_self && !matches!(&command, Command::SealText(..) | Command::SealFile(..)) {
         return Err(CliError::Usage);
@@ -670,6 +684,35 @@ fn run(
             check_interrupted()?;
             write_new_private(&destination, opened.text().as_bytes())?;
             writeln!(output, "Verified text saved to a new private file.")?;
+            false
+        }
+        Command::ReceiveText(sender, context, source, destination) => {
+            if destination.try_exists()? {
+                return Err(CliError::Io(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "output exists",
+                )));
+            }
+            let delivery = decode_delivery(&source, options.delivery_format)?;
+            check_interrupted()?;
+            let (opened, anchor) = client.receive_text_once(
+                &mut store,
+                loaded.digest,
+                &sender,
+                &context,
+                &delivery,
+                now(),
+            )?;
+            // Commit and emit the new independent rollback floor before any
+            // plaintext output. A lost filesystem result is never an automatic retry.
+            emit_anchor(&anchor, diagnostics)?;
+            writeln!(
+                diagnostics,
+                "Receipt committed. Retain the new anchor even if plaintext output fails."
+            )?;
+            check_interrupted()?;
+            write_new_private(&destination, opened.text().as_bytes())?;
+            writeln!(output, "Received text saved to a new private file.")?;
             false
         }
         Command::SealFile(ids, context, source, destination) => {
