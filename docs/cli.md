@@ -74,7 +74,7 @@ yourself. This workflow does not provide forward secrecy after long-term key
 compromise, message replay prevention, or network delivery. The output directory
 should be private and trusted.
 
-See `e2ee --help` for commands. File-attachment CLI follows this milestone.
+See `e2ee --help` for commands and [private import/export behavior](private-cli-files.md) for atomic publication, cancellation, supported filesystems and uncertain-output recovery. Attachment and backup commands are described below.
 
 ## Signed attachments
 
