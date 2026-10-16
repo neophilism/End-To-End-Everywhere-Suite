@@ -273,7 +273,7 @@ persist groups, send network traffic or hide the plaintext list's membership
 from anyone with filesystem access. Explicit `--armor` or `--uri` formats
 are also supported, subject to their output size limits.
 
-## Receive signed text once
+## Receive signed text or attachments once
 
 Use `receive-text` for an inbox action whose receipt must survive process restart:
 
@@ -282,10 +282,17 @@ e2ee --state bob-state --software-vault --anchor "$LATEST_ANCHOR" \
   receive-text alice inbox-v1 received.e2ed opened.txt
 ```
 
-The sender must already be a verified, active contact and the signature context must match. Keep the latest public `ANCHOR` from stderr in independently trusted storage, advancing it only after the archive commit. `receive-text` requires `--anchor`; password-only restoration cannot supply the rollback floor needed for this CLI claim. `--armor` and `--uri` select the same explicit delivery formats supported by other delivery commands.
+For an attachment, use the same boundary with an explicit recipient-selected output path:
 
-The command first authenticates and decrypts, then commits a receipt in the encrypted archive, emits its new anchor and writes plaintext to a new private file. It never prints plaintext to stdout or silently overwrites a file. An existing destination is rejected before committing a receipt. After a committed receipt, a filesystem failure or interruption can leave the output unconfirmed; the diagnostic identifies that the receipt was committed. Retain the new anchor and inspect the outcome before using an explicit archival `open-text` to recover a display/export.
+```sh
+e2ee --state bob-state --software-vault --anchor "$LATEST_ANCHOR" \
+  receive-file alice attachment-v1 received.e2ed attachment.bin
+```
+
+The sender must already be a verified, active contact and the signature context must match. Keep the latest public `ANCHOR` from stderr in independently trusted storage, advancing it only after the archive commit. Both commands require `--anchor`; password-only restoration cannot supply the rollback floor needed for this CLI claim. `--armor` and `--uri` select the same explicit delivery formats supported by other delivery commands.
+
+The command first authenticates and decrypts, then commits a receipt in the encrypted archive, emits its new anchor and writes plaintext to a new private file. It never prints plaintext to stdout or silently overwrites a file. An existing destination is rejected before committing a receipt. After a committed receipt, a filesystem failure or interruption can leave the output unconfirmed; the diagnostic identifies that the receipt was committed. Retain the new anchor and inspect the outcome before using an explicit archival `open-text` or `open-file` to recover a display/export.
 
 A later receive-once call rejects the same Capsule, including after restart or a binary-to-armored transport conversion. No receipt is stored for an invalid sender, missing signature, wrong context or failed decryption. The maximum is 4,096 receipt IDs; full history blocks additional inbox receives instead of silently evicting old IDs. Existing `open-text`, `open-file` and self-note commands remain archival decryption operations, which allow repeated opening.
 
-The public capability inventory exposes `anchored_receive_once_text: true` with its exact command scope. The broader `message_replay_protection` flag remains false because this does not turn all APIs/commands into replay-safe inboxes, implement cross-device synchronization, add a ratchet, or provide forward secrecy. See [receipt storage and failure semantics](receive-once.md).
+The public capability inventory exposes `anchored_receive_once_text: true` and `anchored_receive_once_files: true` with their exact command scope. The broader `message_replay_protection` flag remains false because this does not turn all APIs/commands into replay-safe inboxes, implement cross-device synchronization, add a ratchet, or provide forward secrecy. See [receipt storage and failure semantics](receive-once.md).

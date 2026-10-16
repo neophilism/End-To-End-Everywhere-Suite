@@ -2,8 +2,10 @@
 
 use crate::{
     contacts::{ContactBook, ContactError},
+    files::OpenedFile,
     replay::{receipt_id, ReplayError, ReplayLedger},
-    ClientError, EncryptedEndpointKeys, EndpointCard, EndpointSession, OpenedText, SessionPolicy,
+    ClientError, EncryptedEndpointKeys, EndpointCard, EndpointSession, OpenedText, SenderPolicy,
+    SessionPolicy,
 };
 use e2ee_core::{EndpointId, ProfileId};
 use e2ee_keystore::{
@@ -310,6 +312,43 @@ impl LocalClient {
             sender,
             context,
             delivery,
+            now_ms,
+        )?;
+        let id = receipt_id(&self.card, &trusted, context, delivery)?;
+        state.receipts.record(id)?;
+        match self.save(store, Some(expected), now_ms) {
+            Ok(anchor) => Ok((opened, anchor)),
+            Err(error) => {
+                self.lock();
+                Err(error)
+            }
+        }
+    }
+
+    /// Receive a signed file with the same commit-before-plaintext policy as text.
+    /// The caller chooses a safe output path; embedded filenames are metadata only.
+    #[allow(clippy::too_many_arguments)]
+    pub fn receive_file_once(
+        &mut self,
+        store: &mut PrivateStateStore,
+        expected: StateDigest,
+        sender: &EndpointId,
+        context: &str,
+        delivery: &Delivery,
+        now_ms: u64,
+    ) -> Result<(OpenedFile, ArchiveAnchor), ArchiveError> {
+        self.require_unlocked(now_ms)?;
+        let state = self.unlocked.as_mut().ok_or(ArchiveError::Locked)?;
+        let trusted = state
+            .contacts
+            .verified_contact(sender)
+            .map_err(ClientError::from)?;
+        let opened = state.session.open_file(
+            delivery,
+            SenderPolicy::RequireSignature {
+                sender: &trusted,
+                context,
+            },
             now_ms,
         )?;
         let id = receipt_id(&self.card, &trusted, context, delivery)?;
@@ -784,6 +823,118 @@ mod tests {
                 1
             )
             .is_ok());
+    }
+
+    #[test]
+    fn file_receive_once_verifies_bytes_and_rejects_restart_and_cross_kind_replay() {
+        let (_directory, mut store, mut bob, mut alice, text, _) = receive_fixture();
+        let recipient =
+            crate::VerifiedContact::confirm(bob.card().clone(), bob.card().fingerprint()).unwrap();
+        let bytes = b"binary content\0\x01\xff";
+        let delivery = alice
+            .encrypt_file(
+                &[recipient],
+                &e2ee_file::FileOptions::new("attachment.bin", "application/octet-stream"),
+                bytes,
+                SignatureMode::Signed {
+                    context: "inbox-file-v1",
+                },
+                1,
+            )
+            .unwrap();
+        let before = store.read().unwrap().unwrap();
+        assert!(bob
+            .receive_file_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-file-v1",
+                &text,
+                2
+            )
+            .is_err());
+        assert!(bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-file-v1",
+                &delivery,
+                2
+            )
+            .is_err());
+        assert!(bob
+            .receive_file_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "wrong-context",
+                &delivery,
+                2
+            )
+            .is_err());
+        assert_eq!(store.read().unwrap().unwrap().digest, before.digest);
+        let (opened, anchor) = bob
+            .receive_file_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-file-v1",
+                &delivery,
+                2,
+            )
+            .unwrap();
+        assert_eq!(opened.bytes(), bytes);
+        assert_eq!(opened.filename(), "attachment.bin");
+        assert!(opened.provenance.is_some());
+        let saved = store.read().unwrap().unwrap();
+        let mut restored = open(&saved.bytes, RestorePolicy::Anchored(&anchor)).unwrap();
+        assert!(matches!(
+            restored.receive_file_once(
+                &mut store,
+                saved.digest,
+                &alice.card().endpoint_id,
+                "inbox-file-v1",
+                &delivery,
+                1
+            ),
+            Err(ArchiveError::Replay(ReplayError::AlreadyReceived))
+        ));
+    }
+
+    #[test]
+    fn failed_file_receipt_save_locks_client_without_committing_or_returning_bytes() {
+        let (_directory, mut store, mut bob, mut alice, _, _) = receive_fixture();
+        let recipient =
+            crate::VerifiedContact::confirm(bob.card().clone(), bob.card().fingerprint()).unwrap();
+        let delivery = alice
+            .encrypt_file(
+                &[recipient],
+                &e2ee_file::FileOptions::new("file.bin", "application/octet-stream"),
+                b"file secret",
+                SignatureMode::Signed {
+                    context: "inbox-file-v1",
+                },
+                1,
+            )
+            .unwrap();
+        let before = store.read().unwrap().unwrap();
+        assert!(matches!(
+            bob.receive_file_once(
+                &mut store,
+                [0; 32],
+                &alice.card().endpoint_id,
+                "inbox-file-v1",
+                &delivery,
+                2
+            ),
+            Err(ArchiveError::Storage(StorageError::Conflict))
+        ));
+        assert!(matches!(
+            bob.session_and_contacts(2),
+            Err(ArchiveError::Locked)
+        ));
+        assert_eq!(store.read().unwrap().unwrap().digest, before.digest);
     }
 
     #[test]

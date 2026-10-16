@@ -1,6 +1,6 @@
 # Durable receive-once receipts
 
-`LocalClient::receive_text_once` supplies an explicit inbox receive boundary for signed text Capsules. It verifies the current contact, expected signature context, sender provenance and recipient decryption, then records a receipt and commits the complete encrypted archive before returning plaintext and a new archive anchor.
+`LocalClient::receive_text_once` and `receive_file_once` supply explicit inbox receive boundaries for signed text and attachment Capsules. Each verifies the current contact, expected signature context, sender provenance and recipient decryption, then records a receipt and commits the complete encrypted archive before returning plaintext and a new archive anchor.
 
 Receipt identity is a domain-separated SHA-256 commitment to the recipient's full endpoint fingerprint, the verified sender's full fingerprint, the exact application context and canonical Capsule bytes. Changing binary, ASCII-armored or local-URI transport spelling leaves the receipt unchanged. New encryption of identical text creates a new delivery and remains a separate message.
 
@@ -12,7 +12,9 @@ The E2CA outer container remains version 1. Its authenticated internal payload i
 
 Whole-archive rollback remains a separate threat. Advance an independently trusted `ArchiveAnchor` only after successful commit and require it on restoration. Password-only restoration accepts valid old backups, including backups before receipt creation, and therefore cannot promise rollback-resistant replay rejection. Cloning an endpoint archive creates another copy of that history; device-wide synchronization and concurrent cross-device inbox delivery are separate unfinished capabilities.
 
-Existing `EndpointSession::open_text` and the CLI's archival open commands retain their repeatable decryption behavior. They are useful for reopening saved encrypted material and make no replay-rejection claim. The CLI `receive-text` command selects this boundary explicitly and requires an independently retained archive anchor. Output-file publication remains a subsequent step; a committed receipt does not imply an output file was successfully written.
+Existing `EndpointSession::open_text` and the CLI's archival open commands retain their repeatable decryption behavior. They are useful for reopening saved encrypted material and make no replay-rejection claim. The CLI `receive-text` and `receive-file` commands select this boundary explicitly and require an independently retained archive anchor. Output-file publication remains a subsequent step; a committed receipt does not imply an output file was successfully written.
+
+Attachments share the same receipt ledger and commit boundary. Their filename and media type remain authenticated metadata: callers select an explicit output path and must not execute, render, or use the embedded filename as a filesystem path automatically. Opening an attachment as text (or text as an attachment) fails before any receipt is recorded. File bytes are returned only after their authenticated manifest and content have been verified and the archive has committed.
 
 This feature uses the existing Capsule/signature/HPKE implementation and adds no new encryption protocol or ratchet. It does not provide forward secrecy, post-compromise security, network delivery, account/device synchronization, or E2EESA certification.
 

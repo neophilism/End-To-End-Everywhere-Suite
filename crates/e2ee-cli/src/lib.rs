@@ -57,6 +57,7 @@ Commands:\n\
   seal-text-list LIST CONTEXT INPUT OUTPUT Encrypt/sign text to verified IDs in LIST\n\
   seal-file IDS CONTEXT INPUT OUTPUT  Encrypt/sign an attachment for verified contacts\n\
   open-file SENDER CONTEXT INPUT OUTPUT Open signed attachment to a private file\n\
+  receive-file SENDER CONTEXT INPUT OUTPUT Receive attachment once; requires --anchor\n\
   seal-file-list LIST CONTEXT INPUT OUTPUT Encrypt/sign a file to verified IDs in LIST\n\
   seal-note CONTEXT INPUT OUTPUT  Encrypt/sign a personal note to this identity\n\
   open-note CONTEXT INPUT OUTPUT  Open a signed personal note from this identity\n\
@@ -100,14 +101,15 @@ pub const CAPABILITIES_JSON: &str = r#"{
     "forward_secret_sessions": false,
     "post_compromise_security": false,
     "message_replay_protection": false,
-    "anchored_receive_once_text": true
+    "anchored_receive_once_text": true,
+    "anchored_receive_once_files": true
   },
   "operating_systems": {
     "unix_local_state": true,
     "windows_local_state": false
   },
   "backup_and_rollback": "independent-anchor-needed",
-  "receive_once_scope": "receive-text; signed text; durable anchored local archive; max 4096 receipts",
+  "receive_once_scope": "receive-text and receive-file; signed deliveries; durable anchored local archive; max 4096 receipts",
   "security_certified": false,
   "production_ready": false
 }"#;
@@ -127,6 +129,7 @@ enum Command {
     SealText(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenText(EndpointId, String, PathBuf, PathBuf),
     ReceiveText(EndpointId, String, PathBuf, PathBuf),
+    ReceiveFile(EndpointId, String, PathBuf, PathBuf),
     SealFile(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenFile(EndpointId, String, PathBuf, PathBuf),
     SealNote(String, PathBuf, PathBuf),
@@ -361,6 +364,12 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             PathBuf::from(input),
             PathBuf::from(output),
         ),
+        ["receive-file", sender, context, input, output] => Command::ReceiveFile(
+            endpoint(sender)?,
+            application_context(context)?.to_owned(),
+            PathBuf::from(input),
+            PathBuf::from(output),
+        ),
         ["seal-file", ids, context, input, output] => Command::SealFile(
             recipients(ids)?,
             application_context(context)?.to_owned(),
@@ -406,6 +415,7 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             Command::SealText(..)
             | Command::OpenText(..)
             | Command::ReceiveText(..)
+            | Command::ReceiveFile(..)
             | Command::SealFile(..)
             | Command::OpenFile(..)
             | Command::SealNote(..)
@@ -415,7 +425,11 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             _ => return Err(CliError::Usage),
         }
     }
-    if matches!(&command, Command::ReceiveText(..)) && anchor.is_none() {
+    if matches!(
+        &command,
+        Command::ReceiveText(..) | Command::ReceiveFile(..)
+    ) && anchor.is_none()
+    {
         return Err(CliError::InvalidAnchor);
     }
     if include_self && !matches!(&command, Command::SealText(..) | Command::SealFile(..)) {
@@ -771,6 +785,34 @@ fn run(
             check_interrupted()?;
             write_new_private(&destination, opened.bytes())?;
             writeln!(output, "Verified attachment saved to a new private file.")?;
+            false
+        }
+        Command::ReceiveFile(sender, context, source, destination) => {
+            if destination.try_exists()? {
+                return Err(CliError::Io(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "output exists",
+                )));
+            }
+            let delivery = decode_delivery(&source, options.delivery_format)?;
+            check_interrupted()?;
+            let (opened, anchor) = client.receive_file_once(
+                &mut store,
+                loaded.digest,
+                &sender,
+                &context,
+                &delivery,
+                now(),
+            )?;
+            emit_anchor(&anchor, diagnostics)?;
+            writeln!(
+                diagnostics,
+                "Receipt committed. Retain the new anchor even if plaintext output fails."
+            )?;
+            check_interrupted()?;
+            // The sender's embedded filename is never used as a path or executed.
+            write_new_private(&destination, opened.bytes())?;
+            writeln!(output, "Received attachment saved to a new private file.")?;
             false
         }
         Command::SealNote(context, source, destination) => {

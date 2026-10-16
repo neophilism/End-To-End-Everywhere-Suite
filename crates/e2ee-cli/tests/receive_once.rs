@@ -208,3 +208,103 @@ fn anchored_receive_persists_replay_state_across_processes_and_transport_encodin
         "An authenticated inbox message."
     );
 }
+
+#[test]
+fn signed_attachment_receive_once_uses_explicit_private_output_and_shared_history() {
+    let root = Sandbox::new();
+    let alice = root.0.join("alice");
+    let bob = root.0.join("bob");
+    ok(&invoke(&alice, None, None, &["init", "alice"]));
+    ok(&invoke(&bob, None, None, &["init", "bob"]));
+    trust(&alice, &bob, "bob");
+    let before_anchor = trust(&bob, &alice, "alice");
+    let source = root.0.join("sender-chosen-name.bin");
+    let delivery = root.0.join("attachment.e2ed");
+    let output = root.0.join("recipient-chosen-name.bin");
+    let payload = [0, 255, 1, 128, 0, 10, 13, 42];
+    fs::write(&source, payload).unwrap();
+    ok(&invoke(
+        &alice,
+        None,
+        None,
+        &[
+            "seal-file",
+            "bob",
+            "attachment-v1",
+            source.to_str().unwrap(),
+            delivery.to_str().unwrap(),
+        ],
+    ));
+    let before_archive = fs::read(bob.join("state.e2es")).unwrap();
+    // Text decoding cannot consume a file receipt, even with a valid signature.
+    let wrong_kind = invoke(
+        &bob,
+        Some(&before_anchor),
+        None,
+        &[
+            "receive-text",
+            "alice",
+            "attachment-v1",
+            delivery.to_str().unwrap(),
+            output.to_str().unwrap(),
+        ],
+    );
+    assert!(!wrong_kind.status.success());
+    assert!(!output.exists());
+    assert_eq!(fs::read(bob.join("state.e2es")).unwrap(), before_archive);
+    let args = [
+        "receive-file",
+        "alice",
+        "attachment-v1",
+        delivery.to_str().unwrap(),
+        output.to_str().unwrap(),
+    ];
+    let no_anchor = invoke(&bob, None, None, &args);
+    assert!(!no_anchor.status.success());
+    assert!(!output.exists());
+    fs::write(&output, b"preserve existing").unwrap();
+    let existing = invoke(&bob, Some(&before_anchor), None, &args);
+    assert!(!existing.status.success());
+    assert_eq!(fs::read(&output).unwrap(), b"preserve existing");
+    assert_eq!(fs::read(bob.join("state.e2es")).unwrap(), before_archive);
+    fs::remove_file(&output).unwrap();
+    let received = invoke(&bob, Some(&before_anchor), None, &args);
+    ok(&received);
+    let latest_anchor = anchor(&received);
+    assert_eq!(fs::read(&output).unwrap(), payload);
+    assert_eq!(
+        fs::metadata(&output).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(!received.stdout.windows(payload.len()).any(|w| w == payload));
+    let duplicate = root.0.join("duplicate.bin");
+    let rejected = invoke(
+        &bob,
+        Some(&latest_anchor),
+        None,
+        &[
+            "receive-file",
+            "alice",
+            "attachment-v1",
+            delivery.to_str().unwrap(),
+            duplicate.to_str().unwrap(),
+        ],
+    );
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("already received"));
+    assert!(!duplicate.exists());
+    // Deliberate archival export remains available after a receipt is committed.
+    ok(&invoke(
+        &bob,
+        Some(&latest_anchor),
+        None,
+        &[
+            "open-file",
+            "alice",
+            "attachment-v1",
+            delivery.to_str().unwrap(),
+            duplicate.to_str().unwrap(),
+        ],
+    ));
+    assert_eq!(fs::read(duplicate).unwrap(), payload);
+}
