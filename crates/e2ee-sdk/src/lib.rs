@@ -248,7 +248,7 @@ impl<A: AnchorRepository> SoftwareClient<A> {
     ) -> Result<Self, SdkError> {
         let anchor = anchors.current()?.ok_or(SdkError::MissingAnchor)?;
         let saved = store.read()?.ok_or(SdkError::MissingArchive)?;
-        let client = LocalClient::open(
+        let mut client = LocalClient::open(
             &saved.bytes,
             passphrase,
             RestorePolicy::Anchored(&anchor),
@@ -256,6 +256,12 @@ impl<A: AnchorRepository> SoftwareClient<A> {
             options.session,
             now_ms,
         )?;
+        // KDF/unlock can outlast a host-side recovery or floor update.
+        // Do not return an unlocked controller for a superseded floor.
+        if anchors.current()?.as_ref() != Some(&anchor) {
+            client.lock();
+            return Err(AnchorError::Conflict.into());
+        }
         Ok(Self {
             client,
             store,
@@ -370,7 +376,10 @@ impl<A: AnchorRepository> SoftwareClient<A> {
         self.active()?;
         let (session, contacts) = self.client.session_and_contacts(now_ms)?;
         let recipients = contacts.resolve_recipients(recipients)?;
-        Ok(session.encrypt_text(&recipients, text, SignatureMode::Signed { context }, now_ms)?)
+        let delivery =
+            session.encrypt_text(&recipients, text, SignatureMode::Signed { context }, now_ms)?;
+        self.active()?;
+        Ok(delivery)
     }
 
     pub fn seal_file(
@@ -384,13 +393,15 @@ impl<A: AnchorRepository> SoftwareClient<A> {
         self.active()?;
         let (session, contacts) = self.client.session_and_contacts(now_ms)?;
         let recipients = contacts.resolve_recipients(recipients)?;
-        Ok(session.encrypt_file(
+        let delivery = session.encrypt_file(
             &recipients,
             file,
             bytes,
             SignatureMode::Signed { context },
             now_ms,
-        )?)
+        )?;
+        self.active()?;
+        Ok(delivery)
     }
 
     /// Returns plaintext only after the archive AND trusted anchor are committed.
@@ -452,11 +463,14 @@ impl<A: AnchorRepository> SoftwareClient<A> {
         self.save_changes(now_ms)
     }
 
-    fn active(&self) -> Result<(), SdkError> {
+    fn active(&mut self) -> Result<(), SdkError> {
         if self.needs_reload {
-            Err(SdkError::ReloadRequired)
-        } else {
-            Ok(())
+            return Err(SdkError::ReloadRequired);
+        }
+        match self.anchors.current() {
+            Ok(Some(current)) if current == self.anchor => Ok(()),
+            Ok(_) => Err(self.fail(AnchorError::Conflict.into())),
+            Err(error) => Err(self.fail(error.into())),
         }
     }
 
