@@ -22,6 +22,7 @@ pub mod archive;
 pub mod contacts;
 pub mod files;
 pub mod portable;
+pub mod replay;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EndpointCard {

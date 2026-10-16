@@ -527,7 +527,10 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        49
+      ]
     },
     {
       "id": "E2ES-048",
@@ -536,7 +539,10 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        50
+      ]
     },
     {
       "id": "E2ES-049",
@@ -554,7 +560,10 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        53
+      ]
     },
     {
       "id": "E2ES-051",

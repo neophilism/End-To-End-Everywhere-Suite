@@ -2,7 +2,8 @@
 
 use crate::{
     contacts::{ContactBook, ContactError},
-    ClientError, EncryptedEndpointKeys, EndpointCard, EndpointSession, SessionPolicy,
+    replay::{receipt_id, ReplayError, ReplayLedger},
+    ClientError, EncryptedEndpointKeys, EndpointCard, EndpointSession, OpenedText, SessionPolicy,
 };
 use e2ee_core::{EndpointId, ProfileId};
 use e2ee_keystore::{
@@ -12,11 +13,13 @@ use e2ee_keystore::{
     ProvisionRequest, SecretClass, SecretHandle, SecureKeyStore,
 };
 use e2ee_storage::{PrivateStateStore, StateDigest, StorageError};
+use e2ee_transport::Delivery;
 use std::fmt;
 use zeroize::Zeroizing;
 
 const ARCHIVE_PREFIX: &[u8; 6] = b"E2CA\0\x01";
-const PAYLOAD_PREFIX: &[u8; 6] = b"E2AP\0\x01";
+const LEGACY_PAYLOAD_PREFIX: &[u8; 6] = b"E2AP\0\x01";
+const PAYLOAD_PREFIX: &[u8; 6] = b"E2AP\0\x02";
 const ANCHOR_PREFIX: &[u8; 6] = b"E2AT\0\x01";
 const CONTEXT: &[u8] = b"End-To-End Everywhere complete local client archive v1\0";
 const ROOT: &str = "client/archive/protocol-state/v1";
@@ -87,6 +90,7 @@ pub enum ArchiveError {
     Contact(ContactError),
     Vault(VaultError),
     Storage(StorageError),
+    Replay(ReplayError),
 }
 
 impl fmt::Display for ArchiveError {
@@ -103,6 +107,7 @@ impl fmt::Display for ArchiveError {
             Self::Contact(error) => error.fmt(f),
             Self::Vault(error) => error.fmt(f),
             Self::Storage(error) => error.fmt(f),
+            Self::Replay(error) => error.fmt(f),
         }
     }
 }
@@ -122,11 +127,13 @@ error_from!(ClientError, Client);
 error_from!(ContactError, Contact);
 error_from!(VaultError, Vault);
 error_from!(StorageError, Storage);
+error_from!(ReplayError, Replay);
 
 struct Unlocked {
     vault: SoftwareVault,
     session: EndpointSession,
     contacts: ContactBook,
+    receipts: ReplayLedger,
     sequence: u64,
 }
 
@@ -174,6 +181,7 @@ impl LocalClient {
                 vault,
                 session,
                 contacts: ContactBook::default(),
+                receipts: ReplayLedger::default(),
                 sequence: 0,
             }),
         })
@@ -242,6 +250,7 @@ impl LocalClient {
                 vault,
                 session,
                 contacts,
+                receipts: decoded.receipts,
                 sequence: decoded.sequence,
             }),
         })
@@ -275,6 +284,43 @@ impl LocalClient {
         self.require_unlocked(now_ms)?;
         let state = self.unlocked.as_mut().ok_or(ArchiveError::Locked)?;
         Ok((&mut state.session, &mut state.contacts))
+    }
+
+    /// Authenticate, decrypt, record and durably commit before returning plaintext.
+    /// On any save failure, discard the unlocked transaction and reload the store.
+    /// An external archive anchor is still required against whole-archive rollback.
+    #[allow(clippy::too_many_arguments)]
+    pub fn receive_text_once(
+        &mut self,
+        store: &mut PrivateStateStore,
+        expected: StateDigest,
+        sender: &EndpointId,
+        context: &str,
+        delivery: &Delivery,
+        now_ms: u64,
+    ) -> Result<(OpenedText, ArchiveAnchor), ArchiveError> {
+        self.require_unlocked(now_ms)?;
+        let state = self.unlocked.as_mut().ok_or(ArchiveError::Locked)?;
+        let trusted = state
+            .contacts
+            .verified_contact(sender)
+            .map_err(ClientError::from)?;
+        let opened = state.session.open_text_from_contact(
+            &state.contacts,
+            sender,
+            context,
+            delivery,
+            now_ms,
+        )?;
+        let id = receipt_id(&self.card, &trusted, context, delivery)?;
+        state.receipts.record(id)?;
+        match self.save(store, Some(expected), now_ms) {
+            Ok(anchor) => Ok((opened, anchor)),
+            Err(error) => {
+                self.lock();
+                Err(error)
+            }
+        }
     }
 
     pub fn change_passphrase(
@@ -324,6 +370,9 @@ impl LocalClient {
         payload.extend_from_slice(&keys.encode());
         payload.extend_from_slice(&(contacts.len() as u32).to_be_bytes());
         payload.extend_from_slice(&contacts);
+        let receipts = state.receipts.encode();
+        payload.extend_from_slice(&(receipts.len() as u32).to_be_bytes());
+        payload.extend_from_slice(&receipts);
         let encrypted = state
             .vault
             .seal_state(&root(), sequence, CONTEXT, &payload)?;
@@ -384,10 +433,14 @@ struct DecodedPayload<'a> {
     card: EndpointCard,
     keys: EncryptedEndpointKeys,
     contacts: &'a [u8],
+    receipts: ReplayLedger,
 }
 
 fn decode_payload(bytes: &[u8]) -> Result<DecodedPayload<'_>, ArchiveError> {
-    if bytes.len() < 16 || bytes.len() > MAX_STATE_BYTES || bytes[..6] != *PAYLOAD_PREFIX {
+    if bytes.len() < 16
+        || bytes.len() > MAX_STATE_BYTES
+        || (bytes[..6] != *PAYLOAD_PREFIX && bytes[..6] != *LEGACY_PAYLOAD_PREFIX)
+    {
         return Err(ArchiveError::Malformed);
     }
     let sequence = number64(&bytes[6..14])?;
@@ -400,6 +453,12 @@ fn decode_payload(bytes: &[u8]) -> Result<DecodedPayload<'_>, ArchiveError> {
     let keys = EncryptedEndpointKeys::decode(take(bytes, &mut offset, 182)?)?;
     let contacts_len = number32(take(bytes, &mut offset, 4)?)?;
     let contacts = take(bytes, &mut offset, contacts_len)?;
+    let receipts = if bytes[..6] == *PAYLOAD_PREFIX {
+        let length = number32(take(bytes, &mut offset, 4)?)?;
+        ReplayLedger::decode(take(bytes, &mut offset, length)?)?
+    } else {
+        ReplayLedger::default()
+    };
     if offset != bytes.len() {
         return Err(ArchiveError::Malformed);
     }
@@ -408,6 +467,7 @@ fn decode_payload(bytes: &[u8]) -> Result<DecodedPayload<'_>, ArchiveError> {
         card,
         keys,
         contacts,
+        receipts,
     })
 }
 
@@ -544,6 +604,251 @@ mod tests {
         assert_eq!(opened.text(), "restart secret");
         assert!(opened.provenance.is_some());
         assert!(!format!("{alice:?}").contains("alice"));
+    }
+
+    fn receive_fixture() -> (
+        TempDirectory,
+        PrivateStateStore,
+        LocalClient,
+        EndpointSession,
+        Delivery,
+        ArchiveAnchor,
+    ) {
+        let directory = TempDirectory::new("receive-once");
+        let mut store = directory.store();
+        let mut bob = create("bob");
+        let mut alice = EndpointSession::create_local(
+            EndpointId::parse("alice").unwrap(),
+            SessionPolicy::default(),
+            0,
+        )
+        .unwrap();
+        let alice_card = alice.card().clone();
+        let (_, book) = bob.session_and_contacts(0).unwrap();
+        book.observe(alice_card.clone()).unwrap();
+        book.verify(&alice_card.endpoint_id, alice_card.fingerprint())
+            .unwrap();
+        let recipient =
+            crate::VerifiedContact::confirm(bob.card().clone(), bob.card().fingerprint()).unwrap();
+        let delivery = alice
+            .encrypt_text(
+                &[recipient],
+                "receive exactly once",
+                SignatureMode::Signed {
+                    context: "inbox-v1",
+                },
+                0,
+            )
+            .unwrap();
+        let anchor = bob.save(&mut store, None, 1).unwrap();
+        (directory, store, bob, alice, delivery, anchor)
+    }
+
+    #[test]
+    fn receive_once_commits_before_plaintext_and_rejects_replay_after_restart() {
+        let (_directory, mut store, mut bob, alice, delivery, _old_anchor) = receive_fixture();
+        let before = store.read().unwrap().unwrap();
+        let (opened, anchor) = bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                2,
+            )
+            .unwrap();
+        assert_eq!(opened.text(), "receive exactly once");
+        assert!(opened.provenance.is_some());
+        let committed = store.read().unwrap().unwrap();
+        assert_ne!(before.digest, committed.digest);
+        assert!(!committed
+            .bytes
+            .windows(20)
+            .any(|part| part == b"receive exactly once"));
+        assert!(matches!(
+            bob.receive_text_once(
+                &mut store,
+                committed.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                3
+            ),
+            Err(ArchiveError::Replay(ReplayError::AlreadyReceived))
+        ));
+        bob.lock();
+        let mut restored = open(&committed.bytes, RestorePolicy::Anchored(&anchor)).unwrap();
+        assert!(matches!(
+            restored.receive_text_once(
+                &mut store,
+                committed.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                1
+            ),
+            Err(ArchiveError::Replay(ReplayError::AlreadyReceived))
+        ));
+        assert_eq!(store.read().unwrap().unwrap().digest, committed.digest);
+        assert!(open(&before.bytes, RestorePolicy::Anchored(&anchor)).is_err());
+    }
+
+    #[test]
+    fn invalid_signature_context_and_revoked_sender_never_create_receipts() {
+        let (_directory, mut store, mut bob, alice, delivery, _) = receive_fixture();
+        let before = store.read().unwrap().unwrap();
+        assert!(bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "wrong-context",
+                &delivery,
+                2
+            )
+            .is_err());
+        let mut unsigned = delivery.clone();
+        unsigned.signature = None;
+        assert!(bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &unsigned,
+                2
+            )
+            .is_err());
+        bob.session_and_contacts(2)
+            .unwrap()
+            .1
+            .revoke(&alice.card().endpoint_id)
+            .unwrap();
+        assert!(bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                2
+            )
+            .is_err());
+        assert_eq!(store.read().unwrap().unwrap().digest, before.digest);
+        bob.session_and_contacts(2)
+            .unwrap()
+            .1
+            .reactivate(&alice.card().endpoint_id, alice.card().fingerprint())
+            .unwrap();
+        assert!(bob
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                2
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn failed_receipt_commit_releases_no_plaintext_and_locks_the_mutated_client() {
+        let (_directory, mut store, mut bob, alice, delivery, anchor) = receive_fixture();
+        let before = store.read().unwrap().unwrap();
+        assert!(matches!(
+            bob.receive_text_once(
+                &mut store,
+                [0; 32],
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                2
+            ),
+            Err(ArchiveError::Storage(StorageError::Conflict))
+        ));
+        assert!(matches!(
+            bob.session_and_contacts(2),
+            Err(ArchiveError::Locked)
+        ));
+        assert_eq!(store.read().unwrap().unwrap().digest, before.digest);
+        let mut reloaded = open(&before.bytes, RestorePolicy::Anchored(&anchor)).unwrap();
+        assert!(reloaded
+            .receive_text_once(
+                &mut store,
+                before.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &delivery,
+                1
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn legacy_archives_upgrade_with_empty_receipt_history_and_preserve_keys() {
+        let (_directory, mut store, bob, _alice, _delivery, anchor) = receive_fixture();
+        let current = store.read().unwrap().unwrap();
+        let (snapshot, encrypted) = split_archive(&current.bytes).unwrap();
+        let state = bob.unlocked.as_ref().unwrap();
+        let payload = state
+            .vault
+            .open_state(&root(), 1, CONTEXT, encrypted)
+            .unwrap();
+        let mut legacy_payload = payload[..payload.len() - 14].to_vec();
+        legacy_payload[..6].copy_from_slice(LEGACY_PAYLOAD_PREFIX);
+        let sealed = state
+            .vault
+            .seal_state(&root(), 1, CONTEXT, &legacy_payload)
+            .unwrap();
+        let mut legacy = ARCHIVE_PREFIX.to_vec();
+        legacy.extend_from_slice(&(snapshot.len() as u32).to_be_bytes());
+        legacy.extend_from_slice(&(sealed.len() as u32).to_be_bytes());
+        legacy.extend_from_slice(snapshot);
+        legacy.extend_from_slice(&sealed);
+        let mut restored = open(&legacy, RestorePolicy::Anchored(&anchor)).unwrap();
+        assert_eq!(restored.card(), bob.card());
+        let upgraded = restored.save(&mut store, Some(current.digest), 1).unwrap();
+        let stored = store.read().unwrap().unwrap();
+        let reloaded = open(&stored.bytes, RestorePolicy::Anchored(&upgraded)).unwrap();
+        assert_eq!(reloaded.card(), bob.card());
+        assert_eq!(
+            reloaded.unlocked.as_ref().unwrap().receipts.encode().len(),
+            10
+        );
+    }
+
+    #[test]
+    fn alternate_transport_encoding_does_not_bypass_received_capsule_history() {
+        let (_directory, mut store, mut bob, alice, delivery, _) = receive_fixture();
+        let before = store.read().unwrap().unwrap();
+        bob.receive_text_once(
+            &mut store,
+            before.digest,
+            &alice.card().endpoint_id,
+            "inbox-v1",
+            &delivery,
+            2,
+        )
+        .unwrap();
+        let armor =
+            e2ee_transport::encode_armored(&delivery, e2ee_capsule::CapsuleLimits::default())
+                .unwrap();
+        let decoded =
+            e2ee_transport::decode_armored(&armor, e2ee_capsule::CapsuleLimits::default()).unwrap();
+        let current = store.read().unwrap().unwrap();
+        assert!(matches!(
+            bob.receive_text_once(
+                &mut store,
+                current.digest,
+                &alice.card().endpoint_id,
+                "inbox-v1",
+                &decoded,
+                3
+            ),
+            Err(ArchiveError::Replay(ReplayError::AlreadyReceived))
+        ));
     }
 
     #[test]
