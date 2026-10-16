@@ -282,6 +282,7 @@ dependencies = [
  "e2ee-keystore",
  "e2ee-storage",
  "e2ee-transport",
+ "getrandom",
  "libc",
  "rpassword",
  "zeroize",

@@ -21,13 +21,15 @@ use e2ee_transport::{
 use std::{
     ffi::OsString,
     fmt,
-    fs::File,
     io::{self, IsTerminal, Read, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
     time::Instant,
 };
 use zeroize::Zeroizing;
+
+mod files;
+use files::{read_backup_file, read_bounded_file, require_new_destination, write_new_private};
 
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 const MAX_TEXT_BYTES: usize = 4 * 1024 * 1024;
@@ -106,7 +108,9 @@ pub const CAPABILITIES_JSON: &str = r#"{
     "anchored_receive_once_text": true,
     "anchored_receive_once_files": true,
     "encrypted_archive_checkpoint_export": true,
-    "anchored_local_backup_restore": true
+    "anchored_local_backup_restore": true,
+    "private_atomic_file_publication": true,
+    "nonblocking_regular_file_imports": true
   },
   "operating_systems": {
     "unix_local_state": true,
@@ -114,6 +118,7 @@ pub const CAPABILITIES_JSON: &str = r#"{
   },
   "backup_and_rollback": "independent-anchor-needed",
   "receive_once_scope": "receive-text and receive-file; signed deliveries; durable anchored local archive; max 4096 receipts",
+  "file_publication_scope": "Unix local filesystems with private permissions, hard links and directory sync; controlled parent directory",
   "security_certified": false,
   "production_ready": false
 }"#;
@@ -175,7 +180,11 @@ pub enum CliError {
     ExtraCredentialInput,
     MissingState,
     AlreadyExists,
-    BackupDurabilityUnknown,
+    UnsafeOutput,
+    DestinationExists,
+    AtomicOutputUnavailable,
+    OutputCommitUncertain,
+    OutputCleanupUncertain,
     Interrupted,
     SignalHandler,
     Io(io::Error),
@@ -208,7 +217,11 @@ impl fmt::Display for CliError {
                 f.write_str("no local client archive exists; initialize a new directory")
             }
             Self::AlreadyExists => f.write_str("creation or restore requires a new state directory"),
-            Self::BackupDurabilityUnknown => f.write_str("backup file exists but directory durability is uncertain; retain the emitted anchor and inspect before retrying"),
+            Self::UnsafeOutput => f.write_str("output filesystem cannot provide a private single-link file"),
+            Self::DestinationExists => f.write_str("output destination already exists; inspect it or choose a new path"),
+            Self::AtomicOutputUnavailable => f.write_str("could not atomically publish private output; check filesystem support and destination permissions"),
+            Self::OutputCommitUncertain => f.write_str("output is already published but cleanup or durability is uncertain; inspect the destination and private pending files before retrying; retain any emitted anchor"),
+            Self::OutputCleanupUncertain => f.write_str("private pending-export cleanup is uncertain; inspect the destination directory before retrying; retain any emitted anchor"),
             Self::Interrupted => f.write_str("operation interrupted"),
             Self::SignalHandler => f.write_str("could not install console cancellation handling"),
             Self::Io(_) => f.write_str("local client I/O or hidden passphrase input failed"),
@@ -704,13 +717,6 @@ fn run(
             let saved = store.read()?.ok_or(CliError::MissingState)?;
             check_interrupted()?;
             write_new_private(&destination, &saved.bytes)?;
-            let parent = destination
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .unwrap_or(Path::new("."));
-            File::open(parent)
-                .and_then(|directory| directory.sync_all())
-                .map_err(|_| CliError::BackupDurabilityUnknown)?;
             writeln!(
                 output,
                 "Encrypted client checkpoint saved to a new private backup file."
@@ -1020,88 +1026,6 @@ fn decode_delivery(path: &Path, format: DeliveryFormat) -> Result<Delivery, CliE
         }
     }
     .map_err(|error| CliError::Client(ClientError::Transport(error)))
-}
-
-fn read_bounded_file(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, CliError> {
-    let file = File::open(path)?;
-    if !file.metadata()?.is_file() {
-        return Err(CliError::InvalidInput);
-    }
-    let mut contents = Zeroizing::new(Vec::new());
-    file.take(limit as u64 + 1).read_to_end(&mut contents)?;
-    if contents.len() > limit {
-        return Err(CliError::FileTooLarge);
-    }
-    Ok(contents)
-}
-
-/// lstat sees dangling symlinks as existing directory entries. A post-check
-/// create_new still closes races; an existing entry must not consume a receipt.
-fn require_new_destination(path: &Path) -> Result<(), CliError> {
-    match std::fs::symlink_metadata(path) {
-        Ok(_) => Err(CliError::Io(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "output exists",
-        ))),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error.into()),
-    }
-}
-
-#[cfg(unix)]
-fn read_backup_file(path: &Path) -> Result<Zeroizing<Vec<u8>>, CliError> {
-    use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
-    if !std::fs::symlink_metadata(path)?.is_file() {
-        return Err(CliError::InvalidInput);
-    }
-    // Nonblocking open permits rejecting a FIFO without waiting for a writer.
-    // A symlink cannot redirect recovery to another file/device mid-selection.
-    let file = OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC | libc::O_NOCTTY)
-        .open(path)?;
-    if !file.metadata()?.is_file() {
-        return Err(CliError::InvalidInput);
-    }
-    let mut bytes = Zeroizing::new(Vec::new());
-    let maximum = e2ee_client::archive::MAX_ARCHIVE_BYTES;
-    file.take(maximum as u64 + 1).read_to_end(&mut bytes)?;
-    if bytes.len() > maximum {
-        return Err(CliError::FileTooLarge);
-    }
-    Ok(bytes)
-}
-#[cfg(not(unix))]
-fn read_backup_file(_path: &Path) -> Result<Zeroizing<Vec<u8>>, CliError> {
-    Err(StorageError::UnsupportedPlatform.into())
-}
-
-/// Refuse any existing destination (including symlinks) and never expose
-/// plaintext through stdout or a default-readable output file.
-#[cfg(unix)]
-fn write_new_private(path: &Path, bytes: &[u8]) -> Result<(), CliError> {
-    use std::{fs, fs::OpenOptions, os::unix::fs::OpenOptionsExt};
-
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)?;
-    let result = file.write_all(bytes).and_then(|()| file.sync_all());
-    if let Err(error) = result {
-        drop(file);
-        let _ = fs::remove_file(path);
-        return Err(CliError::Io(error));
-    }
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn write_new_private(_path: &Path, _bytes: &[u8]) -> Result<(), CliError> {
-    Err(CliError::Io(io::Error::new(
-        io::ErrorKind::Unsupported,
-        "private output requires a Unix host",
-    )))
 }
 
 fn emit_identity(card: &EndpointCard, output: &mut impl Write) -> Result<(), CliError> {

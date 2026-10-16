@@ -568,7 +568,8 @@
       "contributingPrs": [
         53,
         54,
-        55
+        55,
+        58
       ]
     },
     {
@@ -673,7 +674,11 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        58
+      ],
+      "fileIoEvidenceScope": "PR 58 adds local Unix import/export boundary hardening and filesystem failure tests. It does not complete the broader audit, reproducible-build or conformance milestone."
     }
   ],
   "pullRequests": [

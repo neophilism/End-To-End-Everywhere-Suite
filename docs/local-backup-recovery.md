@@ -30,7 +30,7 @@ Existing installations are not overwritten or remotely invalidated. If another c
 
 An existing export destination is rejected before advancing the checkpoint. A later export error can occur after the live archive has committed: stderr explicitly identifies that boundary and emits the new anchor first. Retain that anchor, keep the live archive, inspect the output, and obtain a current verified backup before discarding the source. Do not assume a failed export left the source state unchanged.
 
-An abrupt interruption may leave an incomplete newly created export. Directory-sync failure reports uncertain durability and preserves the file for inspection. Recovery authenticates the entire archive; an incomplete or changed export cannot silently become a valid checkpoint. These commands do not claim atomic publication to external backup media or secure deletion of prior copies.
+The [shared private file helper](private-cli-files.md) prepares a synced private pending file before atomically publishing its selected name. A crash before publication can leave a private pending file; a post-publication cleanup or directory-sync failure preserves the complete selected export and reports uncertainty. Recovery authenticates the entire archive, so an incomplete or changed export cannot silently become a valid checkpoint. Supported local filesystem requirements and explicit external-media copying apply to backups as well as plaintext exports. These commands do not claim atomic publication to external backup media or secure deletion of prior copies.
 
 ## Rust SDK
 
