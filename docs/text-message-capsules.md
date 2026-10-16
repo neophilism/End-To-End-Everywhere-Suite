@@ -51,4 +51,4 @@ The endpoint HPKE private key is endpoint protocol state, not a hardware root ke
 
 ## Dependency assurance
 
-The Rust HPKE implementation is pinned to an exact release and is covered by the suite's CI and interoperability work. Upstream documentation states the crate has not received a paid formal audit; this repository therefore does not treat dependency choice as cryptographic certification. External review and reproducible release evidence remain required by the later assurance roadmap.
+The Rust HPKE implementation is pinned to an exact release and is covered by the suite's CI and interoperability work. Upstream documentation states the crate has not received a paid formal audit; this repository therefore does not treat dependency choice as cryptographic certification. Independent external review remains deferred follow-up under [the owner policy](../AGENTS.md). Reproducible release evidence remains its own later assurance work; dependency choice and AI review do not establish independent certification.

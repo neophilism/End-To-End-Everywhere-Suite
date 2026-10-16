@@ -1,4 +1,6 @@
-> **Current canonical PR roadmap:** [`registry/roadmap.json`](../registry/roadmap.json). Historical 72-product-slot plan follows; PR work ledger and active denominator are maintained in the canonical registry.
+> **Current canonical PR registry:** [`registry/prs.json`](../registry/prs.json). Historical 72-product-slot plan follows; PR work ledger and active denominator are maintained in the canonical registry.
+
+> **Current owner review policy:** [AGENTS.md](../AGENTS.md) authorizes substantive AI source/security review and applicable passing tests for implementation, merge and deployment. Independent human review remains deferred follow-up. Historical assurance goals below do not turn its absence into an operational prerequisite; actual defects, missing functionality/credentials, profile decisions and transaction approvals still apply.
 
 # End-To-End Everywhere Suite — original 72-milestone product plan and full handoff
 
@@ -485,7 +487,7 @@ Review [architecture](architecture.md), [runtime contract](runtime-contract.md),
 1. Fetch latest GitHub `main`, open PRs, CI, compatibility pins, release tags and known security risks. Use current-source tests rather than assumed completion from prior conversations.
 2. Maintain a project-wide evidence matrix: `EEES-ID → full product capability → implementation/GitHub PRs → tests and device/browser/provider evidence → actual deployed availability`. Use the 72-stage plan for remaining product scope and the 40-item original code manifest for historical implementation progress, not conflated totals.
 3. Continue reusable core first, then usable desktop/mobile vault and endpoint trust, then protected app/browser/email/messaging, with dependency parallelism only where contracts are stable. Do not hardcode provider, OS or tenant assumptions in the crypto core.
-4. Require E2EESA contract/conformance evidence, manual security review, key compromise/recovery and revocation tests, cross-device interop and real user/product usability testing before release. Signatures, encryption and delivery promises must be demonstrated, not inferred from schemas.
+4. Require evidence for the exact security and product claims being released: AI source/security review, applicable key-compromise/recovery and revocation tests, actual interoperability and usability acceptance, and operational checks. Independent human review and certification remain separate, honestly pending work under the owner policy. Signatures, encryption and delivery promises must be demonstrated, not inferred from schemas.
 5. Never commit credentials/keys; defer only access/permissions, material cryptographic/profile decisions or failed gates. Chain routine PRs and keep a live work-status page with completed/remaining, CI, deploy/monitor checks.
 
 ## Recovery confidence

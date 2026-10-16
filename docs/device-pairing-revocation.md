@@ -34,5 +34,7 @@ This is a portable state-machine boundary, not a deployed cross-client product.
 It does not yet provide signed or encrypted pairing transport, durable
 rollback-protected roster storage, QR rendering/scanning, synchronization,
 multi-administrator policy, recovery authorization, user interface acceptance,
-or real desktop/mobile interoperability tests. Those integrations and an
-independent security review remain required before claiming E2ES-048 complete.
+or real desktop/mobile interoperability tests. Those integrations, substantive AI source/security review and applicable passing tests
+remain necessary before claiming E2ES-048 complete. Independent human review is
+deferred under [the owner policy](../AGENTS.md); its absence does not block implementation,
+merge or deployment, and AI review does not establish independent certification.

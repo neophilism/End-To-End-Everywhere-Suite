@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="End-To-End Everywhere Suite - open-source, pre-alpha local encryption tools and engineering status.">
   <meta name="theme-color" content="#101b2a">
@@ -30,8 +31,8 @@
       <p class="eyebrow">WHAT YOU CAN ACTUALLY RUN</p>
       <h2 id="build">A developer-ready foundation, not yet a consumer product</h2>
       <div class="cards">
-        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Local encrypted files</h3><p>Signed and encrypted Capsule deliveries, private file handling, and personal notes through the local Rust CLI.</p></article>
-        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Verified contacts</h3><p>Contact-card exchange, independent key verification, revocation, and multi-recipient operations.</p></article>
+        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Local encrypted files</h3><p>Signed text/attachments, encrypted personal notes, anchored receive-once receipts and local backup/recovery through the Rust CLI.</p></article>
+        <article class="card"><span class="kicker">AVAILABLE IN SOURCE</span><h3>Contacts and SDK preview</h3><p>Contact-card exchange, fingerprint verification, revocation, multi-recipient operations and a Rust SDK preview with host-supplied independent anchors.</p></article>
         <article class="card"><span class="kicker">NOT YET AVAILABLE</span><h3>Apps and network delivery</h3><p>Desktop/mobile UX, online relay services, message synchronization, and forward-secret messaging remain future work.</p></article>
       </div>
     </section>
