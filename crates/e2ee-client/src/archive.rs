@@ -262,6 +262,11 @@ impl LocalClient {
         &self.card
     }
 
+    /// Last observed lock state. Hosts still call `tick` with monotonic time.
+    pub fn is_unlocked(&self) -> bool {
+        self.unlocked.is_some()
+    }
+
     pub fn lock(&mut self) {
         self.unlocked = None;
     }

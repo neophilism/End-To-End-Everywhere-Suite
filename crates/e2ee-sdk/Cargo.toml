@@ -1,0 +1,18 @@
+[package]
+name = "e2ee-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pre-alpha application controller for anchored local E2EE transactions"
+
+[dependencies]
+e2ee-client = { path = "../e2ee-client" }
+e2ee-core = { path = "../e2ee-core" }
+e2ee-file = { path = "../e2ee-file" }
+e2ee-keystore = { path = "../e2ee-keystore" }
+e2ee-storage = { path = "../e2ee-storage" }
+e2ee-transport = { path = "../e2ee-transport" }
+zeroize = "=1.8.2"
+
+[lints]
+workspace = true

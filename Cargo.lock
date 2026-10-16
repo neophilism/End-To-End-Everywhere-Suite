@@ -383,6 +383,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "e2ee-sdk"
+version = "0.1.0"
+dependencies = [
+ "e2ee-client",
+ "e2ee-core",
+ "e2ee-file",
+ "e2ee-keystore",
+ "e2ee-storage",
+ "e2ee-transport",
+ "zeroize",
+]
+
+[[package]]
 name = "e2ee-storage"
 version = "0.1.0"
 dependencies = [
