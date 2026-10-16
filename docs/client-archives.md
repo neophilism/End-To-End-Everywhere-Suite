@@ -1,7 +1,7 @@
 # Persistent local client archives
 
 `e2ee_client::archive::LocalClient` keeps the software vault, recipient/signer
-session and encrypted contact book together. Lock and timeout drop their shared
+session, encrypted contact book and bounded receive-once receipt history together. Lock and timeout drop their shared
 unlocked owner, including roots and endpoint keys. Hosts still call the timer,
 handle OS suspend/logout, and clear displayed or copied plaintext.
 
@@ -34,3 +34,5 @@ trusted anchor. Password changes are reported successful only after saving.
 Backups are never implicitly erased. Public `session_and_contacts` borrows are
 for the current unlocked transaction; use the current contact book for every
 send/open operation so changed or revoked keys block new operations.
+
+The authenticated internal payload now writes version 2, with version-1 read compatibility. See [receive-once receipts](receive-once.md) for the commit-before-plaintext boundary, capacity and independent-anchor requirements.

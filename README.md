@@ -47,6 +47,8 @@ endpoint keys and contact trust together, with explicit anchored or password-onl
 The [local CLI](docs/cli.md) now creates persistent identities and manages verified
 contacts and unlock credentials with hidden terminal prompts.
 
+The shared archive client now offers [durable receive-once receipts](docs/receive-once.md) for signed text, committed before plaintext is returned. CLI inbox integration follows separately.
+
 The local CLI supports explicitly selected ASCII-armored signed text and
 attachment delivery for email-friendly transport; see [CLI guidance](docs/cli.md).
 
