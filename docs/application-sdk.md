@@ -1,0 +1,56 @@
+# Anchored application SDK preview
+
+`e2ee-sdk` is the first Rust application controller for the existing local client, under API preview version 1. It contributes to E2ES-051; stable language bindings, consumer applications, interoperability guarantees, and a supported SDK release remain unfinished. Version 0.1 interfaces can change. Existing Capsule and archive formats retain their own strict version handling; the API preview number is not a new cryptographic profile, protocol, certification, or stable ABI.
+
+The controller owns the private archive writer guard, unlocked software vault, current contact book, receipt history, optimistic state digest and trusted anchor floor. Applications cannot obtain mutable key handles or forget a separate save after changing contact trust through this boundary. The software fallback is selected explicitly by `SoftwareClient`; it makes no native keystore or hardware isolation claim.
+
+## Host responsibilities
+
+Implement `AnchorRepository` for one installation's archive slot using independently protected storage. `current` must retrieve the trusted floor. `advance` must atomically compare the exact previous anchor, enforce the same vault/endpoint and nondecreasing revision plus increasing archive sequence, durably persist the next floor, and return success only after that is complete. Conflicts and uncertain writes return an error. Do not delete or reset the slot as a retry policy.
+
+Process memory, a file next to the replayable archive, or an account-controlled server value alone does not supply the required independent protection. The in-memory implementation in the integration tests is a failure-injection test double, not a production adapter. Actual protected platform anchor adapters remain part of the platform integration work.
+
+The host also selects a private archive directory, supplies a zeroizing local passphrase, enforces the configured KDF resource budget, provides monotonically increasing elapsed time within each unlocked session, and calls `tick`/`lock` on inactivity, screen lock, suspend and logout. It clears its own displayed/copied plaintext. The SDK never opens a network connection or collects credentials for a service.
+
+## Basic application use
+
+The host provisions an empty private store for `SoftwareClient::create`, or opens the existing private store for `SoftwareClient::open`. Opening requires the anchor from the repository; there is no password-only fallback in this controller.
+
+```rust
+use e2ee_sdk::{
+    AnchorRepository, PrivateStateStore, SdkError, SoftwareClient,
+    SoftwareOptions, Zeroizing,
+};
+
+fn unlock<A: AnchorRepository>(
+    store: PrivateStateStore,
+    anchors: A,
+    passphrase: Zeroizing<Vec<u8>>,
+    elapsed_ms: u64,
+) -> Result<SoftwareClient<A>, SdkError> {
+    SoftwareClient::open(store, anchors, passphrase, SoftwareOptions::default(), elapsed_ms)
+}
+```
+
+Use `observe_contact` to import an untrusted card, then compare the complete card fingerprint over an independent channel before calling `verify_contact`. Observation alone never grants trust. `revoke_contact` and explicit fingerprint-checked `reactivate_contact` are durable operations. `seal_text` and `seal_file` resolve the current verified contacts and always sign with the exact application context.
+
+`receive_text` and `receive_file` require the current verified sender and expected context. They authenticate/decrypt through the existing shared client, commit encrypted receipt history, and then advance the trusted anchor before returning a zeroizing plaintext owner. Attachments return bytes and authenticated metadata. The application chooses any export path and must not automatically render or execute active content or use a sender-supplied filename as a path.
+
+## Transaction and failure contract
+
+1. Authenticate and validate the requested operation under current trust and lock policy.
+2. Commit the complete encrypted archive through the private atomic storage adapter.
+3. Advance the independently protected floor with compare-and-swap.
+4. Return success and, for a receive, plaintext.
+
+There is no distributed atomic commit across the archive and external anchor store. A failure after step 2 can leave the archive ahead of the floor, or an uncertain anchor write can already have advanced it. The controller locks, marks `needs_reload`, drops any pending plaintext and refuses subsequent operations. Keep both stores, drop the controller to release its writer guard, inspect the outcome and open against the anchor repository again. Never automatically resend, erase the archive, lower a floor, or declare a failed operation uncommitted.
+
+If the archive is ahead of an older trusted floor, a fresh open accepts the authenticated newer state and preserves its receipts. Rollback protection still extends only to the independently retained floor. If the anchor is ahead of an old archive, opening fails. A fresh archive whose initial anchor was never persisted requires explicit host recovery/identity verification; the SDK does not adopt it without a trusted floor.
+
+An invalid context, unverified/revoked contact or duplicate receipt does not create a new committed receipt. Authentication failures leave a still-unlocked controller usable. Save failures, lock and timeout require a fresh open. Creation can leave an archive behind if the anchor update fails; this is reported as failure, not automatically undone.
+
+This boundary supplies local anchored replay rejection for explicitly received signed Capsules, with the shared maximum of 4,096 receipts and no silent eviction. It does not make output/export exactly once, synchronize devices, implement a ratchet, provide forward secrecy or post-compromise security, issue account/device authorizations, or supply network delivery. Low-level archival opening remains a separate repeatable operation.
+
+## Evidence
+
+External-consumer integration tests use real encryption and real private archive files. They cover unverified contacts, signed text and binary attachments, wrong contexts without state changes, receipt persistence across fresh controllers, rollback under a newer floor, durable revocation, timeout, redacted debug output, missing-anchor rejection, and anchor failures both before and after a simulated write. The fake anchor adapter checks that a new encrypted archive is visible before every attempted floor update. Passing these tests does not establish a production platform anchor implementation or independent security certification.

@@ -49,6 +49,8 @@ contacts and unlock credentials with hidden terminal prompts.
 
 The shared archive client now offers [durable receive-once receipts](docs/receive-once.md) for signed text and attachments, committed before plaintext is returned. The `receive-text` and `receive-file` CLI commands require an independent archive anchor and persist shared receipt history across invocations.
 
+The [application SDK preview](docs/application-sdk.md) owns archive transactions and requires the host's independent anchor store to commit before returning received plaintext. It is a pre-alpha Rust boundary; production platform anchor adapters and stable language bindings remain unfinished.
+
 The local CLI supports explicitly selected ASCII-armored signed text and
 attachment delivery for email-friendly transport; see [CLI guidance](docs/cli.md).
 
