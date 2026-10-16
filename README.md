@@ -51,6 +51,8 @@ The shared archive client now offers [durable receive-once receipts](docs/receiv
 
 The [application SDK preview](docs/application-sdk.md) owns archive transactions and requires the host's independent anchor store to commit before returning received plaintext. It is a pre-alpha Rust boundary; production platform anchor adapters and stable language bindings remain unfinished.
 
+[Local backup and recovery](docs/local-backup-recovery.md) exports complete encrypted checkpoints and restores the same endpoint into a new directory, retaining keys, contact trust and committed receipt history under the independent anchor floor.
+
 The local CLI supports explicitly selected ASCII-armored signed text and
 attachment delivery for email-friendly transport; see [CLI guidance](docs/cli.md).
 

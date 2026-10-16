@@ -130,6 +130,11 @@ fn anchored_receive_persists_replay_state_across_processes_and_transport_encodin
     assert!(!wrong.status.success());
     assert!(!output.exists());
     assert_eq!(fs::read(bob.join("state.e2es")).unwrap(), old_archive);
+    std::os::unix::fs::symlink(root.0.join("absent-target"), &output).unwrap();
+    let dangling = invoke(&bob, Some(&before_anchor), None, &args);
+    assert!(!dangling.status.success());
+    assert_eq!(fs::read(bob.join("state.e2es")).unwrap(), old_archive);
+    fs::remove_file(&output).unwrap();
     fs::write(&output, "keep-existing-file").unwrap();
     let existing = invoke(&bob, Some(&before_anchor), None, &args);
     assert!(!existing.status.success());
@@ -307,4 +312,173 @@ fn signed_attachment_receive_once_uses_explicit_private_output_and_shared_histor
         ],
     ));
     assert_eq!(fs::read(duplicate).unwrap(), payload);
+}
+
+#[test]
+fn anchored_backup_restore_recovers_private_keys_without_overwrite_or_rollback_fallback() {
+    let root = Sandbox::new();
+    let original = root.0.join("original");
+    let initialized = invoke(&original, None, None, &["init", "backup-owner"]);
+    ok(&initialized);
+    let initial_anchor = anchor(&initialized);
+    let input = root.0.join("note.txt");
+    let note = root.0.join("note.e2ed");
+    fs::write(&input, "Recover this private note after local state loss.").unwrap();
+    ok(&invoke(
+        &original,
+        Some(&initial_anchor),
+        None,
+        &[
+            "seal-note",
+            "backup-note",
+            input.to_str().unwrap(),
+            note.to_str().unwrap(),
+        ],
+    ));
+    let backup = root.0.join("backup.e2ca");
+    let before = fs::read(original.join("state.e2es")).unwrap();
+    std::os::unix::fs::symlink(root.0.join("absent-backup-target"), &backup).unwrap();
+    let dangling = invoke(
+        &original,
+        Some(&initial_anchor),
+        None,
+        &["backup", backup.to_str().unwrap()],
+    );
+    assert!(!dangling.status.success());
+    assert_eq!(fs::read(original.join("state.e2es")).unwrap(), before);
+    fs::remove_file(&backup).unwrap();
+    fs::write(&backup, b"keep existing").unwrap();
+    let exists = invoke(
+        &original,
+        Some(&initial_anchor),
+        None,
+        &["backup", backup.to_str().unwrap()],
+    );
+    assert!(!exists.status.success());
+    assert_eq!(fs::read(&backup).unwrap(), b"keep existing");
+    assert_eq!(fs::read(original.join("state.e2es")).unwrap(), before);
+    fs::remove_file(&backup).unwrap();
+    let exported = invoke(
+        &original,
+        Some(&initial_anchor),
+        None,
+        &["backup", backup.to_str().unwrap()],
+    );
+    ok(&exported);
+    let checkpoint = anchor(&exported);
+    let ciphertext = fs::read(&backup).unwrap();
+    assert_eq!(ciphertext, fs::read(original.join("state.e2es")).unwrap());
+    assert_eq!(
+        fs::metadata(&backup).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert_ne!(checkpoint, initial_anchor);
+    let restored = root.0.join("restored");
+    let fifo = root.0.join("not-a-backup.pipe");
+    assert!(Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap()
+        .success());
+    let nonregular = invoke(
+        &restored,
+        Some(&checkpoint),
+        None,
+        &["restore", fifo.to_str().unwrap()],
+    );
+    assert!(!nonregular.status.success());
+    assert!(!restored.exists());
+    let link = root.0.join("backup-link.e2ca");
+    std::os::unix::fs::symlink(&backup, &link).unwrap();
+    let redirected = invoke(
+        &restored,
+        Some(&checkpoint),
+        None,
+        &["restore", link.to_str().unwrap()],
+    );
+    assert!(!redirected.status.success());
+    assert!(!restored.exists());
+    let no_floor = invoke(
+        &restored,
+        None,
+        None,
+        &["restore", backup.to_str().unwrap()],
+    );
+    assert!(!no_floor.status.success());
+    assert!(!restored.exists());
+    let broken = root.0.join("broken.e2ca");
+    let mut changed = ciphertext.clone();
+    *changed.last_mut().unwrap() ^= 1;
+    fs::write(&broken, changed).unwrap();
+    let invalid = invoke(
+        &restored,
+        Some(&checkpoint),
+        None,
+        &["restore", broken.to_str().unwrap()],
+    );
+    assert!(!invalid.status.success());
+    assert!(!restored.exists());
+    let recovered = invoke(
+        &restored,
+        Some(&checkpoint),
+        None,
+        &["restore", backup.to_str().unwrap()],
+    );
+    ok(&recovered);
+    let latest = anchor(&recovered);
+    assert_ne!(latest, checkpoint);
+    assert!(String::from_utf8_lossy(&recovered.stdout).contains("does not enroll a new device"));
+    let original_fingerprint = String::from_utf8_lossy(&initialized.stdout)
+        .lines()
+        .find(|l| l.starts_with("Fingerprint: "))
+        .unwrap()
+        .to_owned();
+    assert!(String::from_utf8_lossy(&recovered.stdout).contains(&original_fingerprint));
+    let opened = root.0.join("recovered-note.txt");
+    ok(&invoke(
+        &restored,
+        Some(&latest),
+        None,
+        &[
+            "open-note",
+            "backup-note",
+            note.to_str().unwrap(),
+            opened.to_str().unwrap(),
+        ],
+    ));
+    assert_eq!(
+        fs::read_to_string(opened).unwrap(),
+        "Recover this private note after local state loss."
+    );
+    let another = root.0.join("stale-restore");
+    let stale = invoke(
+        &another,
+        Some(&latest),
+        None,
+        &["restore", backup.to_str().unwrap()],
+    );
+    assert!(!stale.status.success());
+    assert!(!another.exists());
+    let current = fs::read(restored.join("state.e2es")).unwrap();
+    let overwrite = invoke(
+        &restored,
+        Some(&latest),
+        None,
+        &["restore", backup.to_str().unwrap()],
+    );
+    assert!(!overwrite.status.success());
+    assert_eq!(fs::read(restored.join("state.e2es")).unwrap(), current);
+    let unavailable = root.0.join("missing-parent").join("export.e2ca");
+    let failed = invoke(
+        &restored,
+        Some(&latest),
+        None,
+        &["backup", unavailable.to_str().unwrap()],
+    );
+    assert!(!failed.status.success());
+    assert!(!unavailable.exists());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("Backup checkpoint committed"));
+    let advanced = anchor(&failed);
+    assert_ne!(advanced, latest);
+    ok(&invoke(&restored, Some(&advanced), None, &["identity"]));
 }

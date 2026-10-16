@@ -51,6 +51,8 @@ Commands:\n\
   revoke ENDPOINT                Block new operations with that contact\n\
   reactivate ENDPOINT FINGERPRINT Explicitly reactivate and verify a contact\n\
   passwd                        Change the local unlock passphrase\n\
+  backup OUTPUT                 Checkpoint/export encrypted state; requires --anchor\n\
+  restore INPUT                 Recover to a NEW state directory; requires --anchor\n\
   seal-text IDS CONTEXT INPUT OUTPUT  Encrypt/sign UTF-8 text for verified contacts\n\
   open-text SENDER CONTEXT INPUT OUTPUT Open signed text from a verified sender\n\
   receive-text SENDER CONTEXT INPUT OUTPUT Receive once; requires --anchor\n\
@@ -102,7 +104,9 @@ pub const CAPABILITIES_JSON: &str = r#"{
     "post_compromise_security": false,
     "message_replay_protection": false,
     "anchored_receive_once_text": true,
-    "anchored_receive_once_files": true
+    "anchored_receive_once_files": true,
+    "encrypted_archive_checkpoint_export": true,
+    "anchored_local_backup_restore": true
   },
   "operating_systems": {
     "unix_local_state": true,
@@ -126,6 +130,8 @@ enum Command {
     Revoke(EndpointId),
     Reactivate(EndpointId, [u8; 32]),
     Passwd,
+    Backup(PathBuf),
+    Restore(PathBuf),
     SealText(Vec<EndpointId>, String, PathBuf, PathBuf),
     OpenText(EndpointId, String, PathBuf, PathBuf),
     ReceiveText(EndpointId, String, PathBuf, PathBuf),
@@ -169,6 +175,7 @@ pub enum CliError {
     ExtraCredentialInput,
     MissingState,
     AlreadyExists,
+    BackupDurabilityUnknown,
     Interrupted,
     SignalHandler,
     Io(io::Error),
@@ -200,7 +207,8 @@ impl fmt::Display for CliError {
             Self::MissingState => {
                 f.write_str("no local client archive exists; initialize a new directory")
             }
-            Self::AlreadyExists => f.write_str("initialization requires a new state directory"),
+            Self::AlreadyExists => f.write_str("creation or restore requires a new state directory"),
+            Self::BackupDurabilityUnknown => f.write_str("backup file exists but directory durability is uncertain; retain the emitted anchor and inspect before retrying"),
             Self::Interrupted => f.write_str("operation interrupted"),
             Self::SignalHandler => f.write_str("could not install console cancellation handling"),
             Self::Io(_) => f.write_str("local client I/O or hidden passphrase input failed"),
@@ -340,6 +348,8 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
             decode_hex(fingerprint).map_err(|_| CliError::InvalidFingerprint)?,
         ),
         ["passwd"] => Command::Passwd,
+        ["backup", output] => Command::Backup(PathBuf::from(output)),
+        ["restore", input] => Command::Restore(PathBuf::from(input)),
         ["seal-text", ids, context, input, output] => Command::SealText(
             recipients(ids)?,
             application_context(context)?.to_owned(),
@@ -427,7 +437,10 @@ fn parse(arguments: &[String]) -> Result<Options, CliError> {
     }
     if matches!(
         &command,
-        Command::ReceiveText(..) | Command::ReceiveFile(..)
+        Command::ReceiveText(..)
+            | Command::ReceiveFile(..)
+            | Command::Backup(..)
+            | Command::Restore(..)
     ) && anchor.is_none()
     {
         return Err(CliError::InvalidAnchor);
@@ -513,6 +526,35 @@ fn run(
     let clock = Instant::now();
     let now = || u64::try_from(clock.elapsed().as_millis()).unwrap_or(u64::MAX);
     let mut passwords = Passwords::new(options.password_stdin)?;
+    if let Command::Restore(ref source) = options.command {
+        if options.state.try_exists()? {
+            return Err(CliError::AlreadyExists);
+        }
+        let anchor = options.anchor.as_ref().ok_or(CliError::InvalidAnchor)?;
+        let bytes = read_backup_file(source)?;
+        let passphrase = passwords.read("Backup vault passphrase: ", false)?;
+        passwords.finish()?;
+        let mut client = LocalClient::open(
+            &bytes,
+            passphrase,
+            RestorePolicy::Anchored(anchor),
+            KdfBudget::default(),
+            SessionPolicy::default(),
+            now(),
+        )?;
+        check_interrupted()?;
+        // An invalid password, modified backup or stale floor never creates a
+        // destination. Creation still refuses a path that appeared meanwhile.
+        let mut store = PrivateStateStore::create(&options.state)?;
+        let next = client.save(&mut store, None, now())?;
+        emit_anchor(&next, diagnostics)?;
+        writeln!(
+            diagnostics,
+            "Restore committed. Retain the new independent anchor even if output fails."
+        )?;
+        writeln!(output, "Restored the same local identity. This does not enroll a new device or invalidate retained copies.")?;
+        return emit_identity(client.card(), output);
+    }
     if let Command::Init(endpoint) = options.command {
         if options.state.try_exists()? {
             return Err(CliError::AlreadyExists);
@@ -653,6 +695,28 @@ fn run(
             )?;
             true
         }
+        Command::Backup(destination) => {
+            require_new_destination(&destination)?;
+            check_interrupted()?;
+            let anchor = client.save(&mut store, Some(loaded.digest), now())?;
+            emit_anchor(&anchor, diagnostics)?;
+            writeln!(diagnostics, "Backup checkpoint committed. Retain the new independent anchor even if export fails.")?;
+            let saved = store.read()?.ok_or(CliError::MissingState)?;
+            check_interrupted()?;
+            write_new_private(&destination, &saved.bytes)?;
+            let parent = destination
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or(Path::new("."));
+            File::open(parent)
+                .and_then(|directory| directory.sync_all())
+                .map_err(|_| CliError::BackupDurabilityUnknown)?;
+            writeln!(
+                output,
+                "Encrypted client checkpoint saved to a new private backup file."
+            )?;
+            false
+        }
         Command::SealText(ids, context, source, destination) => {
             let plaintext = read_bounded_file(&source, MAX_TEXT_BYTES)?;
             let text = std::str::from_utf8(&plaintext).map_err(|_| CliError::InvalidText)?;
@@ -701,12 +765,7 @@ fn run(
             false
         }
         Command::ReceiveText(sender, context, source, destination) => {
-            if destination.try_exists()? {
-                return Err(CliError::Io(io::Error::new(
-                    io::ErrorKind::AlreadyExists,
-                    "output exists",
-                )));
-            }
+            require_new_destination(&destination)?;
             let delivery = decode_delivery(&source, options.delivery_format)?;
             check_interrupted()?;
             let (opened, anchor) = client.receive_text_once(
@@ -788,12 +847,7 @@ fn run(
             false
         }
         Command::ReceiveFile(sender, context, source, destination) => {
-            if destination.try_exists()? {
-                return Err(CliError::Io(io::Error::new(
-                    io::ErrorKind::AlreadyExists,
-                    "output exists",
-                )));
-            }
+            require_new_destination(&destination)?;
             let delivery = decode_delivery(&source, options.delivery_format)?;
             check_interrupted()?;
             let (opened, anchor) = client.receive_file_once(
@@ -912,7 +966,7 @@ fn run(
             )?;
             false
         }
-        Command::Init(_) => return Err(CliError::Usage),
+        Command::Init(_) | Command::Restore(_) => return Err(CliError::Usage),
     };
     if changed {
         check_interrupted()?;
@@ -979,6 +1033,47 @@ fn read_bounded_file(path: &Path, limit: usize) -> Result<Zeroizing<Vec<u8>>, Cl
         return Err(CliError::FileTooLarge);
     }
     Ok(contents)
+}
+
+/// lstat sees dangling symlinks as existing directory entries. A post-check
+/// create_new still closes races; an existing entry must not consume a receipt.
+fn require_new_destination(path: &Path) -> Result<(), CliError> {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => Err(CliError::Io(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "output exists",
+        ))),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+#[cfg(unix)]
+fn read_backup_file(path: &Path) -> Result<Zeroizing<Vec<u8>>, CliError> {
+    use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
+    if !std::fs::symlink_metadata(path)?.is_file() {
+        return Err(CliError::InvalidInput);
+    }
+    // Nonblocking open permits rejecting a FIFO without waiting for a writer.
+    // A symlink cannot redirect recovery to another file/device mid-selection.
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC | libc::O_NOCTTY)
+        .open(path)?;
+    if !file.metadata()?.is_file() {
+        return Err(CliError::InvalidInput);
+    }
+    let mut bytes = Zeroizing::new(Vec::new());
+    let maximum = e2ee_client::archive::MAX_ARCHIVE_BYTES;
+    file.take(maximum as u64 + 1).read_to_end(&mut bytes)?;
+    if bytes.len() > maximum {
+        return Err(CliError::FileTooLarge);
+    }
+    Ok(bytes)
+}
+#[cfg(not(unix))]
+fn read_backup_file(_path: &Path) -> Result<Zeroizing<Vec<u8>>, CliError> {
+    Err(StorageError::UnsupportedPlatform.into())
 }
 
 /// Refuse any existing destination (including symlinks) and never expose

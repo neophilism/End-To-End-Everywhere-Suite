@@ -289,3 +289,105 @@ fn missing_anchor_has_no_password_only_fallback() {
         Err(SdkError::MissingAnchor)
     ));
 }
+
+#[test]
+fn checkpoint_restore_preserves_keys_receipts_and_trusted_floors_including_an_uncertain_restore() {
+    let root = Sandbox::new();
+    let ap = root.0.join("alice");
+    let bp = root.0.join("bob");
+    let aa = TestAnchors::new(&ap);
+    let ba = TestAnchors::new(&bp);
+    let mut alice = create(&ap, "alice", &aa);
+    let mut bob = create(&bp, "bob", &ba);
+    pair(&mut alice, &mut bob);
+    let delivery = alice
+        .seal_text(&[id("bob")], "backup-test", "received before recovery", 3)
+        .unwrap();
+    bob.receive_text(&id("alice"), "backup-test", &delivery, 3)
+        .unwrap();
+    let backup = bob.checkpoint_backup(4).unwrap();
+    assert_eq!(Some(backup.checkpoint_anchor().clone()), ba.floor());
+    assert_eq!(backup.bytes(), fs::read(bp.join("state.e2es")).unwrap());
+    assert!(!format!("{backup:?}").contains("received before recovery"));
+    drop(bob);
+
+    let recovered_path = root.0.join("recovered-bob");
+    ba.0.borrow_mut().archive = recovered_path.join("state.e2es");
+    let previous_floor = ba.floor();
+    ba.fail(Failure::BeforeWrite);
+    let result = SoftwareClient::restore_backup(
+        PrivateStateStore::create(&recovered_path).unwrap(),
+        ba.clone(),
+        backup.bytes(),
+        password(),
+        SoftwareOptions::default(),
+        0,
+    );
+    assert!(matches!(
+        result,
+        Err(SdkError::Anchor(AnchorError::Unavailable))
+    ));
+    assert_eq!(ba.floor(), previous_floor);
+    assert!(recovered_path.join("state.e2es").is_file());
+    ba.fail(Failure::None);
+    let mut recovered = open(&recovered_path, &ba).unwrap();
+    assert!(recovered
+        .receive_text(&id("alice"), "backup-test", &delivery, 1)
+        .unwrap_err()
+        .to_string()
+        .contains("already received"));
+    let latest = recovered.checkpoint_backup(2).unwrap();
+    drop(recovered);
+
+    let stale_path = root.0.join("stale-restore");
+    let store = PrivateStateStore::create(&stale_path).unwrap();
+    assert!(SoftwareClient::restore_backup(
+        store,
+        ba.clone(),
+        backup.bytes(),
+        password(),
+        SoftwareOptions::default(),
+        0
+    )
+    .is_err());
+    assert!(PrivateStateStore::open(&stale_path)
+        .unwrap()
+        .read()
+        .unwrap()
+        .is_none());
+    let final_path = root.0.join("final-recovery");
+    ba.0.borrow_mut().archive = final_path.join("state.e2es");
+    let mut final_client = SoftwareClient::restore_backup(
+        PrivateStateStore::create(&final_path).unwrap(),
+        ba.clone(),
+        latest.bytes(),
+        password(),
+        SoftwareOptions::default(),
+        0,
+    )
+    .unwrap();
+    assert_eq!(final_client.card().endpoint_id, id("bob"));
+    assert!(final_client
+        .receive_text(&id("alice"), "backup-test", &delivery, 1)
+        .unwrap_err()
+        .to_string()
+        .contains("already received"));
+    assert_eq!(
+        final_client.contacts(2).unwrap()[0].1,
+        ContactStatus::Verified
+    );
+    let saved = fs::read(final_path.join("state.e2es")).unwrap();
+    drop(final_client);
+    assert!(matches!(
+        SoftwareClient::restore_backup(
+            PrivateStateStore::open(&final_path).unwrap(),
+            ba,
+            latest.bytes(),
+            password(),
+            SoftwareOptions::default(),
+            0
+        ),
+        Err(SdkError::Storage(_))
+    ));
+    assert_eq!(fs::read(final_path.join("state.e2es")).unwrap(), saved);
+}
