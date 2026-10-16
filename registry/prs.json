@@ -89,7 +89,11 @@
       ],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        57
+      ],
+      "localBackupScope": "PR 57 adds encrypted local archive checkpoint export and same-endpoint restore under an independent floor. It does not implement account recovery, device enrollment, cross-device synchronization or invalidation of retained key copies."
     },
     {
       "id": "E2ES-008",
@@ -576,7 +580,8 @@
       "externalDependencies": [],
       "externalPrerequisites": [],
       "contributingPrs": [
-        56
+        56,
+        57
       ],
       "scopeNotes": "PR 56 provides a pre-alpha Rust application transaction controller with host-supplied independent anchor persistence. Production platform adapters, stable API/ABI guarantees, language bindings and supported SDK release acceptance remain incomplete."
     },

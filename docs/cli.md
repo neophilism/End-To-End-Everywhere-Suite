@@ -275,6 +275,8 @@ are also supported, subject to their output size limits.
 
 ## Receive signed text or attachments once
 
+For complete local state backups and recovery into a new directory, use [anchored `backup` and `restore`](local-backup-recovery.md). Both commands preserve the independent-floor requirement and emit a new anchor after committing state; they never overwrite a state directory or export file.
+
 Use `receive-text` for an inbox action whose receipt must survive process restart:
 
 ```sh

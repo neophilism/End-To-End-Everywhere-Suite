@@ -51,6 +51,10 @@ An invalid context, unverified/revoked contact or duplicate receipt does not cre
 
 This boundary supplies local anchored replay rejection for explicitly received signed Capsules, with the shared maximum of 4,096 receipts and no silent eviction. It does not make output/export exactly once, synchronize devices, implement a ratchet, provide forward secrecy or post-compromise security, issue account/device authorizations, or supply network delivery. Low-level archival opening remains a separate repeatable operation.
 
+## Backup and recovery
+
+The SDK also provides [anchored local checkpoint export and recovery](local-backup-recovery.md) through `checkpoint_backup` and `restore_backup`. Recovery always obtains trust from the independent repository and restores the same endpoint, rather than enrolling a device or trusting a floor embedded in a backup.
+
 ## Evidence
 
 External-consumer integration tests use real encryption and real private archive files. They cover unverified contacts, signed text and binary attachments, wrong contexts without state changes, receipt persistence across fresh controllers, rollback under a newer floor, durable revocation, timeout, redacted debug output, missing-anchor rejection, and anchor failures both before and after a simulated write. The fake anchor adapter checks that a new encrypted archive is visible before every attempted floor update. Passing these tests does not establish a production platform anchor implementation or independent security certification.

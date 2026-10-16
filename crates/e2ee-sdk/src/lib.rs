@@ -128,6 +128,29 @@ pub struct SoftwareClient<A: AnchorRepository> {
     needs_reload: bool,
 }
 
+/// Complete ciphertext snapshot. The enclosed floor is informational; recovery
+/// MUST use the independent repository, never adopt this bundled value as trust.
+pub struct EncryptedBackup {
+    bytes: Vec<u8>,
+    anchor: ArchiveAnchor,
+}
+impl EncryptedBackup {
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    pub fn checkpoint_anchor(&self) -> &ArchiveAnchor {
+        &self.anchor
+    }
+}
+impl fmt::Debug for EncryptedBackup {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EncryptedBackup")
+            .field("byte_count", &self.bytes.len())
+            .field("contents", &"[REDACTED]")
+            .finish()
+    }
+}
+
 impl<A: AnchorRepository> fmt::Debug for SoftwareClient<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SoftwareClient")
@@ -143,7 +166,7 @@ impl<A: AnchorRepository> SoftwareClient<A> {
     /// and independent anchor. Failure may leave a committed archive: inspect
     /// and recover it rather than deleting or automatically recreating it.
     pub fn create(
-        mut store: PrivateStateStore,
+        store: PrivateStateStore,
         mut anchors: A,
         endpoint: EndpointId,
         passphrase: Zeroizing<Vec<u8>>,
@@ -153,7 +176,7 @@ impl<A: AnchorRepository> SoftwareClient<A> {
         if anchors.current()?.is_some() {
             return Err(SdkError::ExistingAnchor);
         }
-        let mut client = LocalClient::create(
+        let client = LocalClient::create(
             endpoint,
             &ProfileId::parse(SOFTWARE_VAULT_PROFILE).expect("fixed software profile is valid"),
             passphrase,
@@ -162,9 +185,45 @@ impl<A: AnchorRepository> SoftwareClient<A> {
             options.session,
             now_ms,
         )?;
+        Self::commit_installation(store, anchors, client, None, now_ms)
+    }
+
+    /// Recover the same local endpoint into an empty store. This is not new
+    /// device enrollment and does not revoke retained copies of endpoint keys.
+    /// Authentication against the independent floor precedes every write.
+    pub fn restore_backup(
+        store: PrivateStateStore,
+        mut anchors: A,
+        ciphertext: &[u8],
+        passphrase: Zeroizing<Vec<u8>>,
+        options: SoftwareOptions,
+        now_ms: u64,
+    ) -> Result<Self, SdkError> {
+        let previous = anchors.current()?.ok_or(SdkError::MissingAnchor)?;
+        if store.read()?.is_some() {
+            return Err(StorageError::Conflict.into());
+        }
+        let client = LocalClient::open(
+            ciphertext,
+            passphrase,
+            RestorePolicy::Anchored(&previous),
+            options.budget,
+            options.session,
+            now_ms,
+        )?;
+        Self::commit_installation(store, anchors, client, Some(previous), now_ms)
+    }
+
+    fn commit_installation(
+        mut store: PrivateStateStore,
+        mut anchors: A,
+        mut client: LocalClient,
+        previous: Option<ArchiveAnchor>,
+        now_ms: u64,
+    ) -> Result<Self, SdkError> {
         let anchor = client.save(&mut store, None, now_ms)?;
         let digest = store.read()?.ok_or(SdkError::MissingArchive)?.digest;
-        if let Err(error) = anchors.advance(None, &anchor) {
+        if let Err(error) = anchors.advance(previous.as_ref(), &anchor) {
             client.lock();
             return Err(error.into());
         }
@@ -215,6 +274,24 @@ impl<A: AnchorRepository> SoftwareClient<A> {
     }
     pub fn needs_reload(&self) -> bool {
         self.needs_reload
+    }
+
+    /// Advance the archive and independent floor, then export that exact
+    /// encrypted checkpoint. A failed/uncertain export never lowers the floor.
+    pub fn checkpoint_backup(&mut self, now_ms: u64) -> Result<EncryptedBackup, SdkError> {
+        self.active()?;
+        self.save_changes(now_ms)?;
+        let result = (|| {
+            let saved = self.store.read()?.ok_or(SdkError::MissingArchive)?;
+            if saved.digest != self.digest {
+                return Err(StorageError::Conflict.into());
+            }
+            Ok(EncryptedBackup {
+                bytes: saved.bytes,
+                anchor: self.anchor.clone(),
+            })
+        })();
+        result.map_err(|error| self.fail(error))
     }
     pub fn lock(&mut self) {
         self.client.lock();

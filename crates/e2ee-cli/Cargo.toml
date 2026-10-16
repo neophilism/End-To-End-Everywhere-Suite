@@ -21,5 +21,8 @@ e2ee-transport = { path = "../e2ee-transport" }
 rpassword = "=7.5.4"
 zeroize = "=1.8.2"
 
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.190"
+
 [lints]
 workspace = true
