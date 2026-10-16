@@ -1,6 +1,6 @@
 # Engine Room portfolio registration and monitoring
 
-The `.exechub/project.yml` file follows Engine Room's controlled manifest schema. It declares a **historical, 40-PR development baseline**, not a claim that the entire Suite is complete, secure, or deployed.
+The active PR plan is [registry/prs.json](../registry/prs.json), governed by [the shared registry contract](../registry/PR_FORMAT.md). It contains **61 approved units**. The `.exechub/project.yml` file and its mapping preserve a **historical 40-PR development baseline**; that baseline does not establish full product completion, security or deployment.
 
 - The 40 completed PRs form roadmap **version 1**. The explicit mapping is recorded in `.exechub/approved-pr-mapping.json`; GitHub merger timestamps, not PR numbering alone, are the completion evidence.
 - The post-baseline development work (PR #41 onwards) is an **extension workstream**, not a reason to silently enlarge or reset the historical denominator. Any new *approved* plan should be versioned explicitly rather than editing the historical plan in place.
@@ -15,7 +15,7 @@ The `.exechub/project.yml` file follows Engine Room's controlled manifest schema
 | Historical PR completion | GitHub merges #1–#40 | Engineering baseline only |
 | Extension development | GitHub PRs after #40 | Separate outstanding roadmap |
 | CI | GitHub Actions on default branch | Code checks, not a security audit |
-| Product release | Signed release artifacts and audit record | Pending |
+| Product release | Applicable implementation/tests, signed artifacts, source-review and operational evidence | Pending; independent human review separately deferred |
 | Marketing/docs site | Site health response | Publication only |
 | End-user services | Explicit production endpoints and synthetic tests | Pending |
 
@@ -23,6 +23,6 @@ The `.exechub/project.yml` file follows Engine Room's controlled manifest schema
 
 1. Ensure the Engine Room GitHub App can see `neophilism/End-To-End-Everywhere-Suite`.
 2. Reconcile GitHub repositories, PRs and approved manifests using Engine Room's production dashboard.
-3. Confirm the Suite is in the portfolio with roadmap version 1 and **40 baseline units**. If progress shows unmapped units, attach the reviewed mapping; do not infer ordinal N means PR N.
-4. Track additional PRs separately from baseline completion, including failures and unmerged work.
+3. Confirm the portfolio reads the **61 approved canonical units** from `registry/prs.json` through `registry/pr-contract.mjs`. Preserve the 40 baseline units as historical evidence. Do not read the retired `registry/roadmap.json` or infer ordinal N means PR N.
+4. Resolve current PR state from live GitHub. `contributingPrs` and `priorEvidencePrs` remain partial/historical evidence and cannot mark a complete unit by themselves. Keep failures, unmerged work and operational acceptance visible.
 5. Show the Suite as **pre-alpha / not deployed** until platform services and release acceptance evidence independently justify another label.
