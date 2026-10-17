@@ -58,6 +58,10 @@ correlated. No metadata anonymity, traffic padding, forward secrecy or
 availability guarantees are provided here. Host logs must never include
 plaintext, shared secrets, upload tokens or full delivery bodies.
 
+## End-to-end local integration evidence
+
+The Unix SDK integration suite in `crates/e2ee-sdk/tests/relay_recovery.rs` uses real signed Capsules, a real encrypted private archive, and a test-only independent anchor double. It verifies that wrong context leaves both local replay history and remote delivery untouched; a successful authenticated receive commits its anchor before explicit acknowledgement; and injected anchor failures, before or after a simulated advance, return no plaintext, retain remote ciphertext, and allow anchored reload to reject replay before deletion. These are local-model tests rather than service, platform, or cross-device interoperability proof.
+
 ## Developer example
 
 ```rust
