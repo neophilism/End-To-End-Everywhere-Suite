@@ -208,10 +208,13 @@ impl InMemoryRelay {
             queue.iter().map(|item| item.delivery.bytes.len()).sum()
         });
         if count >= self.limits.max_items_per_mailbox
-            || mailbox_bytes.checked_add(raw_delivery.len())
+            || mailbox_bytes
+                .checked_add(raw_delivery.len())
                 .filter(|total| *total <= self.limits.max_bytes_per_mailbox)
                 .is_none()
-            || self.queued_bytes.checked_add(raw_delivery.len())
+            || self
+                .queued_bytes
+                .checked_add(raw_delivery.len())
                 .filter(|total| *total <= self.limits.max_total_bytes)
                 .is_none()
             || (!self.mailboxes.contains_key(&mailbox)
@@ -219,7 +222,8 @@ impl InMemoryRelay {
         {
             return Err(RelayError::QuotaExceeded);
         }
-        let sequence = self.next_sequence
+        let sequence = self
+            .next_sequence
             .checked_add(1)
             .ok_or(RelayError::SequenceExhausted)?;
         self.mailboxes.entry(mailbox).or_default().push_back(Item {
@@ -249,7 +253,8 @@ impl InMemoryRelay {
             return Err(RelayError::InvalidPageSize);
         }
         Ok(self.mailboxes.get(&mailbox).map_or_else(Vec::new, |queue| {
-            queue.iter()
+            queue
+                .iter()
                 .filter(|item| after.is_none_or(|cursor| item.delivery.sequence > cursor))
                 .take(limit)
                 .map(|item| item.delivery.clone())
@@ -270,7 +275,10 @@ impl InMemoryRelay {
         let mut removed_size = None;
         let mut is_empty = false;
         if let Some(queue) = self.mailboxes.get_mut(&mailbox) {
-            if let Some(position) = queue.iter().position(|item| item.delivery.sequence == sequence) {
+            if let Some(position) = queue
+                .iter()
+                .position(|item| item.delivery.sequence == sequence)
+            {
                 removed_size = queue.remove(position).map(|item| item.delivery.bytes.len());
             }
             is_empty = queue.is_empty();
@@ -339,12 +347,9 @@ mod tests {
         .unwrap();
         let signer = CapsuleSigningKey::generate().unwrap();
         Delivery {
-            signature: Some(sign_capsule(
-                &signer,
-                &capsule,
-                "relay-fixture",
-                CapsuleLimits::default(),
-            ).unwrap()),
+            signature: Some(
+                sign_capsule(&signer, &capsule, "relay-fixture", CapsuleLimits::default()).unwrap(),
+            ),
             capsule,
         }
         .encode(CapsuleLimits::default())
@@ -393,7 +398,10 @@ mod tests {
             relay.enqueue(mailbox(1), token(1), &signed_delivery("beta"), 5, 11),
             Err(RelayError::DuplicateUploadConflict)
         );
-        assert_eq!(relay.page(mailbox(1), None, 8, 14).unwrap()[0].expires_at_ms, 15);
+        assert_eq!(
+            relay.page(mailbox(1), None, 8, 14).unwrap()[0].expires_at_ms,
+            15
+        );
         assert!(relay.page(mailbox(1), None, 8, 15).unwrap().is_empty());
         assert_eq!(relay.queued_bytes(), 0);
         assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 5, 16), Ok(2));
@@ -407,7 +415,10 @@ mod tests {
         assert_eq!(relay.enqueue(mailbox(2), token(1), &bytes, 200, 2), Ok(2));
         assert_eq!(relay.enqueue(mailbox(1), token(2), &bytes, 200, 3), Ok(3));
         assert_eq!(relay.page(mailbox(1), None, 1, 4).unwrap()[0].sequence, 1);
-        assert_eq!(relay.page(mailbox(1), Some(1), 1, 5).unwrap()[0].sequence, 3);
+        assert_eq!(
+            relay.page(mailbox(1), Some(1), 1, 5).unwrap()[0].sequence,
+            3
+        );
         assert_eq!(relay.page(mailbox(2), None, 4, 6).unwrap().len(), 1);
         assert!(relay.acknowledge(mailbox(1), 1, 7).unwrap());
         assert!(!relay.acknowledge(mailbox(1), 1, 8).unwrap());
@@ -435,8 +446,14 @@ mod tests {
             relay.enqueue(mailbox(1), token(2), &data, 10, 100),
             Err(RelayError::QuotaExceeded)
         );
-        assert_eq!(relay.page(mailbox(1), None, 2, 100), Err(RelayError::InvalidPageSize));
-        assert_eq!(relay.page(mailbox(1), None, 1, 99), Err(RelayError::ClockRollback));
+        assert_eq!(
+            relay.page(mailbox(1), None, 2, 100),
+            Err(RelayError::InvalidPageSize)
+        );
+        assert_eq!(
+            relay.page(mailbox(1), None, 1, 99),
+            Err(RelayError::ClockRollback)
+        );
         assert_eq!(relay.page(mailbox(1), None, 1, 110).unwrap().len(), 0);
         assert_eq!(relay.enqueue(mailbox(2), token(1), &data, 10, 111), Ok(2));
         assert_eq!(relay.queued_bytes(), data.len());
@@ -445,7 +462,10 @@ mod tests {
     #[test]
     fn invalid_inputs_and_time_arithmetic_fail_closed() {
         assert_eq!(MailboxId::new([0; 32]), Err(RelayError::InvalidMailbox));
-        assert_eq!(UploadToken::new([0; 16]), Err(RelayError::InvalidUploadToken));
+        assert_eq!(
+            UploadToken::new([0; 16]),
+            Err(RelayError::InvalidUploadToken)
+        );
         assert!(InMemoryRelay::new(
             RelayLimits {
                 max_delivery_bytes: 0,
