@@ -584,7 +584,12 @@ fn post_commit_floor_change_or_read_failure_prevents_reporting_success() {
         let mut bob = create(&bp, "bob", &ba);
         pair(&mut alice, &mut bob);
         let delivery = alice
-            .seal_text(&[id("bob")], "post-commit", "never returned on uncertain floor", 3)
+            .seal_text(
+                &[id("bob")],
+                "post-commit",
+                "never returned on uncertain floor",
+                3,
+            )
             .unwrap();
         {
             let mut state = ba.0.borrow_mut();
@@ -593,9 +598,15 @@ fn post_commit_floor_change_or_read_failure_prevents_reporting_success() {
         }
         let result = bob.receive_text(&id("alice"), "post-commit", &delivery, 3);
         if fail_read {
-            assert!(matches!(result, Err(SdkError::Anchor(AnchorError::Unavailable))));
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Unavailable))
+            ));
         } else {
-            assert!(matches!(result, Err(SdkError::Anchor(AnchorError::Conflict))));
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Conflict))
+            ));
         }
         assert!(bob.needs_reload());
         assert!(matches!(bob.contacts(4), Err(SdkError::ReloadRequired)));
@@ -623,9 +634,15 @@ fn installation_commit_rechecks_authoritative_floor() {
             0,
         );
         if fail_read {
-            assert!(matches!(result, Err(SdkError::Anchor(AnchorError::Unavailable))));
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Unavailable))
+            ));
         } else {
-            assert!(matches!(result, Err(SdkError::Anchor(AnchorError::Conflict))));
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Conflict))
+            ));
         }
         assert!(fs::read(ap.join("state.e2es")).unwrap().len() > 100);
     }
