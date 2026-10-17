@@ -28,8 +28,8 @@ impl Sandbox {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir()
-            .join(format!("e2ee-relay-sdk-{}-{nonce}", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("e2ee-relay-sdk-{}-{nonce}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
@@ -169,7 +169,12 @@ fn relay_preserves_authenticated_capsule_until_endpoint_commits_and_acknowledges
     let mailbox = MailboxId::new([1; 32]).unwrap();
     let mut relay = InMemoryRelay::new(RelayLimits::default(), Default::default()).unwrap();
     let signed = alice
-        .seal_text(&[id("bob")], "relay-message", "encrypted through mailbox", 3)
+        .seal_text(
+            &[id("bob")],
+            "relay-message",
+            "encrypted through mailbox",
+            3,
+        )
         .unwrap();
     let wire = signed.encode(Default::default()).unwrap();
     let sequence = relay
@@ -230,7 +235,9 @@ fn receive_anchor_failure_keeps_relay_delivery_for_recovery_without_plaintext_re
             .seal_text(&[id("bob")], "relay-recovery", "secret must not escape", 3)
             .unwrap();
         let wire = original.encode(Default::default()).unwrap();
-        let sequence = relay.enqueue(mailbox, upload_token, &wire, 500, 10).unwrap();
+        let sequence = relay
+            .enqueue(mailbox, upload_token, &wire, 500, 10)
+            .unwrap();
         let delivery = Delivery::decode(
             &relay.page(mailbox, None, 1, 11).unwrap()[0].bytes,
             Default::default(),
