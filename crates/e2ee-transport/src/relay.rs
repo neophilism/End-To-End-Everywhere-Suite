@@ -16,8 +16,14 @@ use std::{
 /// Opaque routing namespace. Never derive this value from a user name, email,
 /// fingerprint or other directly identifying string. It is NOT a secret or an
 /// authentication credential; server policy must authorize operations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MailboxId([u8; 32]);
+
+impl fmt::Debug for MailboxId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("MailboxId([REDACTED])")
+    }
+}
 
 impl MailboxId {
     pub fn new(bytes: [u8; 32]) -> Result<Self, RelayError> {
@@ -30,8 +36,14 @@ impl MailboxId {
 
 /// Client-chosen, independently random upload retry token; hosts must not
 /// reuse it for different deliveries. This is not a sender credential.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct UploadToken([u8; 16]);
+
+impl fmt::Debug for UploadToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("UploadToken([REDACTED])")
+    }
+}
 
 impl UploadToken {
     pub fn new(bytes: [u8; 16]) -> Result<Self, RelayError> {
@@ -121,11 +133,22 @@ impl std::error::Error for RelayError {}
 
 /// Copied ciphertext for an authorized recipient's device-side processing.
 /// Acknowledgement is separate; listing never marks messages received.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct QueuedDelivery {
     pub sequence: u64,
     pub expires_at_ms: u64,
     pub bytes: Vec<u8>,
+}
+
+impl fmt::Debug for QueuedDelivery {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("QueuedDelivery")
+            .field("sequence", &self.sequence)
+            .field("expires_at_ms", &self.expires_at_ms)
+            .field("ciphertext_length", &self.bytes.len())
+            .field("bytes", &"[REDACTED]")
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -457,6 +480,21 @@ mod tests {
         assert_eq!(relay.page(mailbox(1), None, 1, 110).unwrap().len(), 0);
         assert_eq!(relay.enqueue(mailbox(2), token(1), &data, 10, 111), Ok(2));
         assert_eq!(relay.queued_bytes(), data.len());
+    }
+
+    #[test]
+    fn debug_output_does_not_disclose_mailbox_tokens_or_delivery_bytes() {
+        let mailbox = MailboxId::new([0x2a; 32]).unwrap();
+        let upload = UploadToken::new([0x2b; 16]).unwrap();
+        let delivery = QueuedDelivery {
+            sequence: 1,
+            expires_at_ms: 100,
+            bytes: b"never print entire ciphertext".to_vec(),
+        };
+        assert_eq!(format!("{mailbox:?}"), "MailboxId([REDACTED])");
+        assert_eq!(format!("{upload:?}"), "UploadToken([REDACTED])");
+        assert!(!format!("{delivery:?}").contains("never print entire ciphertext"));
+        assert!(format!("{delivery:?}").contains("ciphertext_length"));
     }
 
     #[test]
