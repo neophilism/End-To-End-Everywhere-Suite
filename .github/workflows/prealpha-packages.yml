@@ -20,6 +20,9 @@ on:
       - ".github/workflows/prealpha-packages.yml"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 
@@ -27,12 +30,23 @@ jobs:
   packages:
     name: Test and package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Reuse Rust dependency and compile cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('Cargo.lock') }}-${{ github.head_ref || github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('Cargo.lock') }}-
       - name: Test Rust workspace on host OS
         run: cargo test --workspace --all-targets --locked
       - name: Build release CLI on host OS
@@ -45,7 +59,7 @@ jobs:
           test -f "dist/e2ee-prealpha-$platform.tar.gz"
           tar tzf "dist/e2ee-prealpha-$platform.tar.gz"
       - name: Upload engineering artifacts (not a release)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: e2ee-prealpha-${{ runner.os }}-${{ runner.arch }}
           path: dist/*

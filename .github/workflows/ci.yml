@@ -5,14 +5,28 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 
 jobs:
   rust:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Reuse Rust dependency and compile cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('Cargo.lock') }}-${{ github.head_ref || github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-rust-${{ hashFiles('Cargo.lock') }}-
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
@@ -26,9 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Suite checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Pinned E2EESA catalog checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: neophilism/End-To-End-Everywhere-Security-Architecture-Standard
           ref: cef6052bdb3bcf45ca0bd3e29d18a519d8f041e0
