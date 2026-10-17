@@ -16,6 +16,9 @@ reused**, not which security gates are required for merging or releasing.
 - A new push to the **same open PR** cancels superseded jobs so only its latest
   candidate consumes long-running macOS/Linux runners. Pushes to `main` are
   never cancelled by this rule; different PRs remain independently validated.
+- Full Rust verification has a 35-minute job limit, and host packaging a
+  45-minute limit. Timeouts fail required gates rather than permitting unbounded
+  hung builds or treating incomplete tests as success.
 - PR caches and permissions remain governed by GitHub Actions' normal scoped
   cache access. Do not put secrets, private keys or sensitive plaintext in
   build outputs, build scripts or logs. Release-signing credentials are not
