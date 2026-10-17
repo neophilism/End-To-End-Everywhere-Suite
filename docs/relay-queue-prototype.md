@@ -52,6 +52,10 @@ recipient endpoint lifecycle and revocation, sender abuse limits, server-side
 quotas, metadata minimization, expiration scheduling, clock sources,
 application/service interfaces, deployment and incident response.
 
+Rust Debug formatting redacts mailbox IDs, upload tokens and delivery bodies;
+operators must also ensure their own request traces and structured logging do
+not serialize these sensitive values.
+
 A global sequence counter and access patterns expose some ordering/traffic
 metadata to the relay. Duplicate uploads and ciphertext itself may be
 correlated. No metadata anonymity, traffic padding, forward secrecy or
