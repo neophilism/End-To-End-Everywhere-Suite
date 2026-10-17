@@ -40,6 +40,8 @@ Use `observe_contact` to import an untrusted card, then compare the complete car
 
 The controller rechecks the independent floor after archive unlock and before each operation that uses unlocked state. Signed text and file outputs get a second floor check before release. A missing, changed or unavailable floor locks the controller and requires a fresh open; restoring the old repository value does not reactivate that controller. Public cached identity cards and the last accepted anchor remain inspectable for diagnosis.
 
+The SDK also re-reads the authoritative floor after an archive/floor commit (including initialization and recovery) before reporting success or releasing decrypted plaintext. A post-commit conflict or read error locks the controller; the archive or floor may already have advanced, so hosts must inspect and reload rather than retry or replay automatically.
+
 These observations and write-time compare-and-swap detect a superseded controller; they are not a distributed revocation lease. The host must serialize recovery, anchor-slot updates and application use when strict ordering across concurrent controllers is required. A separate actor can still change the floor after the final read. The SDK does not promise instantaneous revocation across machines or release already-returned data.
 
 1. Authenticate and validate the requested operation under current trust and lock policy.
