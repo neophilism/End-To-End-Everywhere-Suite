@@ -66,22 +66,22 @@ The Unix SDK integration suite in `crates/e2ee-sdk/tests/relay_recovery.rs` uses
 
 ```rust
 use e2ee_transport::relay::{
-    InMemoryRelay, MailboxId, RelayLimits, UploadToken,
+    InMemoryRelay, MailboxId, RelayError, UploadToken,
 };
-use e2ee_capsule::CapsuleLimits;
 
-let mut queue = InMemoryRelay::new(
-    RelayLimits::default(),
-    CapsuleLimits::default(),
-)?;
-let mailbox = MailboxId::new([1; 32])?;
-let upload = UploadToken::new([2; 16])?;
-// Only pass already encoded, signed E2ED bytes. Examples above are placeholders.
-# let signed_e2ed_bytes: &[u8] = &[];
-# let now_ms = 0;
-# let _sequence = queue.enqueue(mailbox, upload, signed_e2ed_bytes, 60_000, now_ms)?;
+fn queue_signed_delivery(
+    relay: &mut InMemoryRelay,
+    mailbox_bytes: [u8; 32],
+    fresh_upload_token: [u8; 16],
+    encoded_signed_e2ed: &[u8],
+    now_ms: u64,
+) -> Result<u64, RelayError> {
+    let mailbox = MailboxId::new(mailbox_bytes)?;
+    let upload = UploadToken::new(fresh_upload_token)?;
+    relay.enqueue(mailbox, upload, encoded_signed_e2ed, 60_000, now_ms)
+}
 ```
 
-The example's placeholder bytes are not a valid delivery; caller code must
-supply a real encoded E2ED object. No independent E2EESA conformance or
-production claim follows from the queue tests.
+The caller must independently authenticate/authorize the mailbox operation
+and supply a properly signed encrypted E2ED delivery plus a genuinely random
+fresh upload token. This model alone provides no production conformance.
