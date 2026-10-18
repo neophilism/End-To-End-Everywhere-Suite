@@ -52,7 +52,11 @@ fn run(state: &Path, include_self: bool, args: &[&str]) -> Output {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(PASSWORD).unwrap();
+    // Invalid input can make the child exit before consuming the password.
+    // BrokenPipe is expected then; the caller separately checks exit status.
+    if let Err(error) = child.stdin.take().unwrap().write_all(PASSWORD) {
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+    }
     child.wait_with_output().unwrap()
 }
 fn success(result: Output) -> String {
