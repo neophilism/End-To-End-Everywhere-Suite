@@ -24,10 +24,8 @@ impl Sandbox {
             .unwrap()
             .as_nanos();
         let unique = NEXT_SANDBOX.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "e2ee-sdk-{}-{nonce}-{unique}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("e2ee-sdk-{}-{nonce}-{unique}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
