@@ -676,9 +676,11 @@
       "externalDependencies": [],
       "externalPrerequisites": [],
       "contributingPrs": [
-        58
+        58,
+        64
       ],
-      "fileIoEvidenceScope": "PR 58 adds local Unix import/export boundary hardening and filesystem failure tests. It does not complete the broader audit, reproducible-build or conformance milestone."
+      "fileIoEvidenceScope": "PR 58 adds local Unix import/export boundary hardening and filesystem failure tests. It does not complete the broader audit, reproducible-build or conformance milestone.",
+      "scopeNotes": " PR 64 pins selected first-party CI actions, adds build caches, timeout guards and cancels superseded PR runs; these are build-automation controls, not independent audit, reproducibility or production conformance evidence."
     }
   ],
   "pullRequests": [
