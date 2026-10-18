@@ -139,6 +139,25 @@ mod tests {
         assert!(ReplayLedger::decode(&reversed).is_err());
     }
     #[test]
+    fn corrupt_prefix_version_and_count_cannot_restore_receipts() {
+        let mut ledger = ReplayLedger::default();
+        ledger.record([7; 32]).unwrap();
+        let good = ledger.encode();
+        let mut bad_magic = good.clone();
+        bad_magic[0] ^= 1;
+        let mut bad_version = good.clone();
+        bad_version[5] ^= 1;
+        let mut count_mismatch = good.clone();
+        count_mismatch[6..10].copy_from_slice(&2_u32.to_be_bytes());
+        let mut count_excess = good.clone();
+        count_excess[6..10].copy_from_slice(&((MAX_RECEIPTS as u32) + 1).to_be_bytes());
+        for malformed in [bad_magic, bad_version, count_mismatch, count_excess] {
+            assert!(matches!(ReplayLedger::decode(&malformed), Err(ReplayError::Malformed)));
+        }
+        assert!(ReplayLedger::decode(&good).is_ok());
+    }
+
+    #[test]
     fn capacity_never_forgets_old_receipts() {
         let mut ledger = ReplayLedger::default();
         for i in 0..MAX_RECEIPTS {
