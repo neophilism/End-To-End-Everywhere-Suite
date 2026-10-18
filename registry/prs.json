@@ -619,9 +619,10 @@
       "externalPrerequisites": [],
       "contributingPrs": [
         62,
-        63
+        63,
+        66
       ],
-      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay."
+      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay. PR 66 retains bounded volatile fingerprints of acknowledged uploads until original expiry; this is not a durable server replay ledger or delivery confirmation."
     },
     {
       "id": "E2ES-055",
