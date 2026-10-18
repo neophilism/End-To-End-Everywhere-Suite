@@ -12,9 +12,7 @@ The tracking baseline pin does not upgrade a product's cryptographic profiles.
 
 ## Scope and prerequisite work
 
-`security/e2eesa-inventory.json` starts as an unverified discovery record. Empty
-components/flows mean discovery is incomplete, never that protected flows are
-absent or requirements are exempt. Inspect source, runtime and build outputs;
+`security/e2eesa-inventory.json` now contains a **preliminary, source-path-based** list of the Rust crates, host obligations, public informational site and known data flows. It is checked by `scripts/validate_e2eesa_inventory.py` and negative regression tests. Its `coverageComplete` value stays **false**, the status record's `inventory.reviewed` stays **false**, and the custom discovery file is **not** an upstream 0.2 scoped component inventory or conformance assessment. Missing components and flows can still exist, so none are exempt. Inspect source, runtime and build outputs;
 enumerate public disclosures, protected content, authorization metadata, keys,
 business processing, endpoints, relays, storage and third-party services.
 Apply the pinned upstream component-inventory and scoped-assessment contracts,

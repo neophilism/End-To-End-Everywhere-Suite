@@ -1,18 +1,452 @@
 {
   "schemaVersion": 1,
   "repository": "neophilism/End-To-End-Everywhere-Suite",
-  "classificationStatus": "unverified",
+  "classificationStatus": "preliminary",
   "coverageComplete": false,
-  "components": [],
-  "dataFlows": [],
+  "observedAt": "2026-10-18",
+  "upstreamReference": {
+    "repository": "neophilism/End-To-End-Everywhere-Security-Architecture-Standard",
+    "commit": "8441335f359c6e446f9bfe8b959f9606ce341409",
+    "relationship": "discovery-only; not a 0.2 conformance request"
+  },
+  "components": [
+    {
+      "id": "core",
+      "paths": [
+        "crates/e2ee-core/src/lib.rs"
+      ],
+      "dataClasses": [
+        "public"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Identity and profile policy objects; no network delivery or automatic trust establishment."
+    },
+    {
+      "id": "capsule",
+      "paths": [
+        "crates/e2ee-capsule/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Versioned binary envelope framing; parsing ciphertext does not independently authenticate sender identity."
+    },
+    {
+      "id": "message",
+      "paths": [
+        "crates/e2ee-message/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "public"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Endpoint HPKE message encryption/decryption, including recipient-key wrapping; no ratchet or post-compromise guarantees."
+    },
+    {
+      "id": "file",
+      "paths": [
+        "crates/e2ee-file/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Chunked file encryption with authenticated content and metadata; host still controls plaintext file destinations."
+    },
+    {
+      "id": "provenance",
+      "paths": [
+        "crates/e2ee-provenance/src/lib.rs"
+      ],
+      "dataClasses": [
+        "public",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Detached signer verification and context binding; an unverified public signer key establishes no real-world identity."
+    },
+    {
+      "id": "transport",
+      "paths": [
+        "crates/e2ee-transport/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Binary, ASCII-armored and local URI delivery framing; no authenticated network relay on main."
+    },
+    {
+      "id": "keystore",
+      "paths": [
+        "crates/e2ee-keystore/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected"
+      ],
+      "implementationState": "partial-contract",
+      "boundary": "Local encrypted software vault and platform-keystore interfaces; working OS/hardware adapters not established."
+    },
+    {
+      "id": "client",
+      "paths": [
+        "crates/e2ee-client/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "public"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Endpoint session, contact pins, vault archive and receive-once ledger; password-only rollback remains possible."
+    },
+    {
+      "id": "storage",
+      "paths": [
+        "crates/e2ee-storage/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Private Unix local record operations; adapter stores caller ciphertext and is not itself an encryption primitive."
+    },
+    {
+      "id": "sdk",
+      "paths": [
+        "crates/e2ee-sdk/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "public"
+      ],
+      "implementationState": "partial-contract",
+      "boundary": "Application controller and host-provided independent replay floor; not a distributed revocation lease or stable ABI."
+    },
+    {
+      "id": "cli",
+      "paths": [
+        "crates/e2ee-cli/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "public",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Terminal client with user-selected local plaintext files, encrypted archives and portable deliveries; no GUI."
+    },
+    {
+      "id": "enrollment",
+      "paths": [
+        "crates/e2ee-enrollment/src/lib.rs"
+      ],
+      "dataClasses": [
+        "public",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "partial-contract",
+      "boundary": "Two-sided pairing state and device roster model; no production provisioning or remote authentication service."
+    },
+    {
+      "id": "directory",
+      "paths": [
+        "crates/e2ee-directory/src/lib.rs"
+      ],
+      "dataClasses": [
+        "public",
+        "intentionally-disclosed"
+      ],
+      "implementationState": "partial-contract",
+      "boundary": "Local proof verification and transparency checkpoint model; no hosted transparency service."
+    },
+    {
+      "id": "recovery",
+      "paths": [
+        "crates/e2ee-recovery/src/lib.rs"
+      ],
+      "dataClasses": [
+        "protected",
+        "public"
+      ],
+      "implementationState": "partial-contract",
+      "boundary": "Recovery policy and stale-generation rules; production hardware-assisted flows and cross-device migration unavailable."
+    },
+    {
+      "id": "public-site",
+      "paths": [
+        "site/public/index.html",
+        "site/public/status.json"
+      ],
+      "dataClasses": [
+        "public"
+      ],
+      "implementationState": "public-only",
+      "boundary": "Information-only static site; no secure application, accounts, plaintext endpoints or private messages."
+    },
+    {
+      "id": "automation",
+      "paths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/prealpha-packages.yml"
+      ],
+      "dataClasses": [
+        "public"
+      ],
+      "implementationState": "implemented-local",
+      "boundary": "Source tests, build and unsigned engineering artifacts; not reproducible certified releases."
+    },
+    {
+      "id": "independent-anchor",
+      "paths": [
+        "crates/e2ee-sdk/src/lib.rs"
+      ],
+      "dataClasses": [
+        "public"
+      ],
+      "implementationState": "host-required",
+      "boundary": "Trusted monotonic floor provided by integrator; no production protected anchor storage adapter exists."
+    }
+  ],
+  "dataFlows": [
+    {
+      "id": "plaintext-cli-to-session",
+      "from": "cli",
+      "to": "client",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-cli/src/lib.rs",
+        "crates/e2ee-client/src/lib.rs"
+      ],
+      "scopeNote": "Explicit user-selected plaintext may exist in process memory, terminal and input file; this is not a global clipboard or filesystem shield."
+    },
+    {
+      "id": "hpke-capsule-encrypt",
+      "from": "message",
+      "to": "capsule",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-message/src/lib.rs",
+        "crates/e2ee-capsule/src/lib.rs"
+      ],
+      "scopeNote": "Endpoint-side content encryption; no forward-secret pairwise ratchet."
+    },
+    {
+      "id": "file-capsule-encrypt",
+      "from": "file",
+      "to": "capsule",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-file/src/lib.rs",
+        "crates/e2ee-capsule/src/lib.rs"
+      ],
+      "scopeNote": "Authenticated file chunks and file metadata; host-controlled plaintext reads/writes."
+    },
+    {
+      "id": "signed-capsule-carrier",
+      "from": "provenance",
+      "to": "transport",
+      "dataClass": "intentionally-disclosed",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-provenance/src/lib.rs",
+        "crates/e2ee-transport/src/lib.rs"
+      ],
+      "scopeNote": "Signature context/fingerprint, recipient routing hints and lengths may be visible; carrier does not verify identity by itself."
+    },
+    {
+      "id": "cli-capsule-export",
+      "from": "cli",
+      "to": "transport",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-cli/src/lib.rs",
+        "crates/e2ee-transport/src/lib.rs"
+      ],
+      "scopeNote": "Local portable delivery only; external email/cloud carrier receives ciphertext if host selects it."
+    },
+    {
+      "id": "local-root-protection",
+      "from": "client",
+      "to": "keystore",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-client/src/lib.rs",
+        "crates/e2ee-keystore/src/lib.rs"
+      ],
+      "scopeNote": "Password-bound vault; OS key hardware claim unsupported without actual native adapter."
+    },
+    {
+      "id": "encrypted-archive-commit",
+      "from": "client",
+      "to": "storage",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-client/src/lib.rs",
+        "crates/e2ee-storage/src/lib.rs"
+      ],
+      "scopeNote": "Atomic Unix record; independent rollback floor is not provided by this storage adapter."
+    },
+    {
+      "id": "sdk-anchor-cas",
+      "from": "sdk",
+      "to": "independent-anchor",
+      "dataClass": "public",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-sdk/src/lib.rs"
+      ],
+      "scopeNote": "Public anchor bytes require separately trusted integrity, monotonicity and durable compare-and-swap."
+    },
+    {
+      "id": "contact-proof-verification",
+      "from": "directory",
+      "to": "client",
+      "dataClass": "intentionally-disclosed",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-directory/src/lib.rs",
+        "crates/e2ee-client/src/lib.rs"
+      ],
+      "scopeNote": "Only local transparency proof verification; no running verified key directory."
+    },
+    {
+      "id": "pairing-authority",
+      "from": "enrollment",
+      "to": "client",
+      "dataClass": "intentionally-disclosed",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-enrollment/src/lib.rs",
+        "crates/e2ee-client/src/lib.rs"
+      ],
+      "scopeNote": "Pairing/roster module does not yet provide a cross-client durable provisioning protocol."
+    },
+    {
+      "id": "recovery-to-sdk",
+      "from": "recovery",
+      "to": "sdk",
+      "dataClass": "protected",
+      "networked": false,
+      "evidencePaths": [
+        "crates/e2ee-recovery/src/lib.rs",
+        "crates/e2ee-sdk/src/lib.rs"
+      ],
+      "scopeNote": "Local encrypted checkpoint restore is available, not a replacement for independently retained authority."
+    },
+    {
+      "id": "static-public-documentation",
+      "from": "public-site",
+      "to": "public-site",
+      "dataClass": "public",
+      "networked": true,
+      "evidencePaths": [
+        "site/public/index.html",
+        "site/public/status.json"
+      ],
+      "scopeNote": "Networked only when third-party host serves static public files; no protected content or account service."
+    },
+    {
+      "id": "source-ci-artifacts",
+      "from": "automation",
+      "to": "automation",
+      "dataClass": "public",
+      "networked": true,
+      "evidencePaths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/prealpha-packages.yml"
+      ],
+      "scopeNote": "GitHub Actions processes source/build metadata and unsigned CLI test packages; no production trust or release evidence."
+    }
+  ],
   "sourceObservations": [
     {
-      "path": "README.md",
-      "blobSha": "c5032b269bc53f055315e1ff1e85251837fe98da"
+      "path": "crates/e2ee-core/src/lib.rs",
+      "blobSha": "1f37c6ca2bf39c4547982055b181c26bbd0ed629"
+    },
+    {
+      "path": "crates/e2ee-capsule/src/lib.rs",
+      "blobSha": "db8319f021f98bd821c809f68fe0532ceae7ad8a"
+    },
+    {
+      "path": "crates/e2ee-message/src/lib.rs",
+      "blobSha": "077ae0b6828c2eb57259be3a281dd1ae8eba0f1b"
+    },
+    {
+      "path": "crates/e2ee-file/src/lib.rs",
+      "blobSha": "7d992064fb1a3b1214c039e9191fd5796940d261"
+    },
+    {
+      "path": "crates/e2ee-provenance/src/lib.rs",
+      "blobSha": "9b267932281225e3d1cfdb8bafb9f9926904bde6"
+    },
+    {
+      "path": "crates/e2ee-transport/src/lib.rs",
+      "blobSha": "8164ccdbbb63ca1a1790642eaddd26afecd90b4a"
+    },
+    {
+      "path": "crates/e2ee-keystore/src/lib.rs",
+      "blobSha": "82cc82433d38d2a3c792e5c9124a66d7b5509e43"
+    },
+    {
+      "path": "crates/e2ee-client/src/lib.rs",
+      "blobSha": "5d934464e862d4299d5546e3cf29a13dbd693e32"
+    },
+    {
+      "path": "crates/e2ee-storage/src/lib.rs",
+      "blobSha": "9aba0a22bc4be7045db6149ca6bc21d63319e9a5"
+    },
+    {
+      "path": "crates/e2ee-sdk/src/lib.rs",
+      "blobSha": "7e41a8b4001c51ea5bf4ad7d01e36226ded03ef5"
+    },
+    {
+      "path": "crates/e2ee-cli/src/lib.rs",
+      "blobSha": "9747a2fe497922bc4d6f94308ffb87fc92a5c6d1"
+    },
+    {
+      "path": "crates/e2ee-enrollment/src/lib.rs",
+      "blobSha": "f4040e0a0f46728b70727a16f636f5cde2e2a00d"
+    },
+    {
+      "path": "crates/e2ee-directory/src/lib.rs",
+      "blobSha": "116a48f4a673dfaaf5f96b45c4d767a658ec6b7b"
+    },
+    {
+      "path": "crates/e2ee-recovery/src/lib.rs",
+      "blobSha": "45dae15680a209be1ee14f32e26554baf072646c"
+    },
+    {
+      "path": "site/public/index.html",
+      "blobSha": "4b68f7281307c260ef1f663a00738f6cd6afb2d4"
+    },
+    {
+      "path": "site/public/status.json",
+      "blobSha": "ccae8d06e636fe7c53bd91300a79770c7296d2b9"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "blobSha": "4039069b42c4276f749cde0a0835f30a7b791f40"
+    },
+    {
+      "path": ".github/workflows/prealpha-packages.yml",
+      "blobSha": "4a1ef2cba6f3b9315249e9ab9cdfd3dbaa8959e3"
     }
   ],
   "limitations": [
-    "This is a discovery placeholder, not a complete E2EESA component inventory or a claim that no protected flows exist.",
-    "Use the pinned upstream 0.2 component-inventory and scoped-assessment contracts for actual assessment."
+    "Source-based provisional catalogue only. Coverage of runtime, build, artifacts, third-party services and all product surfaces is not independently assessed or complete.",
+    "This v1 discovery file is not the upstream 0.2 component-inventory schema; no genuine artifact digest or trusted completeness observations are asserted.",
+    "Hosted relay, cross-client ratchet, browser, mobile/desktop applications, enterprise controls and native protected anchor adapters remain unimplemented or incomplete.",
+    "Neither passing repository checks nor this document establishes E2EESA implementation/testing completion, certification, or independent expert review."
   ]
 }

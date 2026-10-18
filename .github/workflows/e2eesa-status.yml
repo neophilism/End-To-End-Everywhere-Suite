@@ -17,3 +17,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 scripts/validate_e2eesa_status.py
+      - run: python3 scripts/validate_e2eesa_inventory.py

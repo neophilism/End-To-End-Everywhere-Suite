@@ -52,3 +52,5 @@ jobs:
         run: python3 scripts/check_e2eesa_binding.py --standard-root .e2eesa-upstream
       - name: Binding checker regression tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Provisional component and flow inventory validation
+        run: python3 scripts/validate_e2eesa_inventory.py
