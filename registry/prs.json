@@ -104,7 +104,11 @@
       ],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        67
+      ],
+      "scopeNotes": "PR 67 bounds suite identifiers and applies aggregate wire-size limits during Capsule validation, with negative parser tests; conformance/fuzz coverage remain separate."
     },
     {
       "id": "E2ES-009",
@@ -677,10 +681,11 @@
       "externalPrerequisites": [],
       "contributingPrs": [
         58,
-        64
+        64,
+        67
       ],
       "fileIoEvidenceScope": "PR 58 adds local Unix import/export boundary hardening and filesystem failure tests. It does not complete the broader audit, reproducible-build or conformance milestone.",
-      "scopeNotes": " PR 64 pins selected first-party CI actions, adds build caches, timeout guards and cancels superseded PR runs; these are build-automation controls, not independent audit, reproducibility or production conformance evidence."
+      "scopeNotes": "PR 64 pins selected first-party CI actions, adds build caches, timeout guards and cancels superseded PR runs; these are build-automation controls, not independent audit, reproducibility or production conformance evidence. PR 67 bounds suite identifiers and applies aggregate wire-size limits during Capsule validation, with negative parser tests; conformance/fuzz coverage remain separate."
     }
   ],
   "pullRequests": [
