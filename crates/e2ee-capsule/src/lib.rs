@@ -462,6 +462,49 @@ mod tests {
     }
 
     #[test]
+    fn validate_enforces_aggregate_wire_size_not_only_field_limits() {
+        let original = capsule();
+        let ordinary = CapsuleLimits::default();
+        let encoded = original.encode(ordinary).unwrap();
+        assert_eq!(original.validate(ordinary), Ok(()));
+        let tight = CapsuleLimits {
+            max_total_bytes: encoded.len() - 1,
+            ..ordinary
+        };
+        assert_eq!(original.validate(tight), Err(CapsuleError::LimitExceeded));
+        assert_eq!(original.encode(tight), Err(CapsuleError::LimitExceeded));
+        assert_eq!(
+            Capsule::decode(&encoded, tight),
+            Err(CapsuleError::LimitExceeded)
+        );
+
+        let exact = CapsuleLimits {
+            max_total_bytes: encoded.len(),
+            ..ordinary
+        };
+        assert_eq!(original.validate(exact), Ok(()));
+        assert_eq!(original.encode(exact).unwrap(), encoded);
+    }
+
+    #[test]
+    fn unbounded_or_noncanonical_suite_identifier_is_rejected() {
+        let ordinary = CapsuleLimits::default();
+        let mut original = capsule();
+        original.suite_id = "X".repeat(MAX_SUITE_ID_BYTES);
+        assert_eq!(original.validate(ordinary), Ok(()));
+        original.suite_id.push('X');
+        assert_eq!(original.validate(ordinary), Err(CapsuleError::InvalidSuite));
+        assert_eq!(original.encode(ordinary), Err(CapsuleError::InvalidSuite));
+
+        let mut raw = capsule().encode(ordinary).unwrap();
+        raw[8..10].copy_from_slice(&129_u16.to_be_bytes());
+        assert_eq!(
+            Capsule::decode(&raw, ordinary),
+            Err(CapsuleError::LimitExceeded)
+        );
+    }
+
+    #[test]
     fn rejects_unknown_version() {
         let limits = CapsuleLimits::default();
         let mut encoded = capsule().encode(limits).unwrap();
