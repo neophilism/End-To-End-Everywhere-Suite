@@ -21,10 +21,8 @@ impl Sandbox {
             .unwrap()
             .as_nanos();
         let serial = NEXT_SANDBOX.fetch_add(1, Ordering::Relaxed);
-        let p = std::env::temp_dir().join(format!(
-            "e2ee-inbox-{}-{seed}-{serial}",
-            std::process::id()
-        ));
+        let p =
+            std::env::temp_dir().join(format!("e2ee-inbox-{}-{seed}-{serial}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&p).unwrap();
         Self(p)
     }
