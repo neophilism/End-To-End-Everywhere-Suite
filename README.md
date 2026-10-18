@@ -56,7 +56,7 @@ The [application SDK preview](docs/application-sdk.md) owns archive transactions
 The local CLI supports explicitly selected ASCII-armored signed text and
 attachment delivery for email-friendly transport; see [CLI guidance](docs/cli.md).
 
-An experimental [volatile ciphertext relay queue](docs/relay-queue-prototype.md) now models bounded opaque mailboxes, idempotent uploads, expiry, pagination and explicit acknowledgement. It is not a network service or a durable delivery guarantee.
+An experimental [volatile ciphertext relay queue](docs/relay-queue-prototype.md) now models bounded opaque mailboxes, idempotent uploads including bounded post-acknowledgement tombstones, expiry, pagination and explicit acknowledgement. It is not a network service or a durable delivery guarantee.
 
 ## End-to-End Everywhere progress
 
