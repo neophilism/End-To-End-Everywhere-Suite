@@ -578,6 +578,76 @@ mod tests {
     }
 
     #[test]
+    fn acknowledged_retry_is_idempotent_until_original_expiry() {
+        let mut relay = queue();
+        let bytes = signed_delivery("original");
+        assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 50, 0), Ok(1));
+        assert!(relay.acknowledge(mailbox(1), 1, 1).unwrap());
+        assert_eq!(relay.queued_bytes(), 0);
+        assert_eq!(relay.acknowledged_count(), 1);
+        assert!(relay.page(mailbox(1), None, 8, 2).unwrap().is_empty());
+        assert!(!relay.acknowledge(mailbox(1), 1, 3).unwrap());
+        assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 100, 4), Ok(1));
+        assert!(relay.page(mailbox(1), None, 8, 5).unwrap().is_empty());
+        assert_eq!(
+            relay.enqueue(mailbox(1), token(1), &signed_delivery("changed"), 40, 6),
+            Err(RelayError::DuplicateUploadConflict)
+        );
+        assert_eq!(relay.acknowledged_count(), 1);
+        assert!(relay.page(mailbox(1), None, 8, 50).unwrap().is_empty());
+        assert_eq!(relay.acknowledged_count(), 0);
+        assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 50, 51), Ok(2));
+    }
+
+    #[test]
+    fn tombstone_quota_keeps_unacknowledged_ciphertext_until_space_returns() {
+        let limits = RelayLimits {
+            max_acknowledged_per_mailbox: 1,
+            max_total_acknowledged: 1,
+            ..RelayLimits::default()
+        };
+        let mut relay = InMemoryRelay::new(limits, CapsuleLimits::default()).unwrap();
+        let bytes = signed_delivery("unchanged");
+        assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 5, 0), Ok(1));
+        assert_eq!(relay.enqueue(mailbox(1), token(2), &bytes, 30, 0), Ok(2));
+        assert!(relay.acknowledge(mailbox(1), 1, 1).unwrap());
+        assert_eq!(
+            relay.acknowledge(mailbox(1), 2, 2),
+            Err(RelayError::QuotaExceeded)
+        );
+        assert_eq!(relay.page(mailbox(1), None, 8, 3).unwrap().len(), 1);
+        assert_eq!(relay.queued_bytes(), bytes.len());
+        // Original tombstone expires at t=5, freeing quota. The second
+        // delivery remains queued and can now be acknowledged.
+        assert!(relay.acknowledge(mailbox(1), 2, 5).unwrap());
+        assert_eq!(relay.acknowledged_count(), 1);
+        assert_eq!(relay.queued_bytes(), 0);
+    }
+
+    #[test]
+    fn tombstones_count_toward_mailbox_quota_and_do_not_leak_debug_fields() {
+        let limits = RelayLimits {
+            max_mailboxes: 1,
+            ..RelayLimits::default()
+        };
+        let mut relay = InMemoryRelay::new(limits, CapsuleLimits::default()).unwrap();
+        let bytes = signed_delivery("bounded tombstone");
+        assert_eq!(relay.enqueue(mailbox(1), token(1), &bytes, 10, 0), Ok(1));
+        assert!(relay.acknowledge(mailbox(1), 1, 1).unwrap());
+        let debug = format!("{relay:?}");
+        assert!(!debug.contains("bounded tombstone"));
+        assert!(!debug.contains(&"2a".repeat(16)));
+        assert!(debug.contains("[REDACTED]"));
+        assert_eq!(
+            relay.enqueue(mailbox(2), token(1), &bytes, 10, 2),
+            Err(RelayError::QuotaExceeded)
+        );
+        // An independent mailbox can be created once the old tombstone
+        // expires; message history survives only for the original TTL.
+        assert_eq!(relay.enqueue(mailbox(2), token(1), &bytes, 10, 10), Ok(2));
+    }
+
+    #[test]
     fn invalid_inputs_and_time_arithmetic_fail_closed() {
         assert_eq!(MailboxId::new([0; 32]), Err(RelayError::InvalidMailbox));
         assert_eq!(
