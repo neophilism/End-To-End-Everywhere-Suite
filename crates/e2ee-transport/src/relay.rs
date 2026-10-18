@@ -261,7 +261,10 @@ impl InMemoryRelay {
         // A digest avoids retaining the old ciphertext in the tombstone. This
         // only deduplicates within one volatile process and the original TTL.
         if let Some(tombstones) = self.tombstones.get(&mailbox) {
-            if let Some(item) = tombstones.iter().find(|item| item.upload_token == upload_token) {
+            if let Some(item) = tombstones
+                .iter()
+                .find(|item| item.upload_token == upload_token)
+            {
                 let fingerprint: [u8; 32] = Sha256::digest(raw_delivery).into();
                 return if item.fingerprint == fingerprint {
                     Ok(item.sequence)
@@ -350,7 +353,9 @@ impl InMemoryRelay {
     ) -> Result<bool, RelayError> {
         self.observe(now_ms)?;
         let position = self.mailboxes.get(&mailbox).and_then(|queue| {
-            queue.iter().position(|item| item.delivery.sequence == sequence)
+            queue
+                .iter()
+                .position(|item| item.delivery.sequence == sequence)
         });
         let Some(position) = position else {
             return Ok(false);
@@ -363,7 +368,10 @@ impl InMemoryRelay {
         {
             return Err(RelayError::QuotaExceeded);
         }
-        let queue = self.mailboxes.get_mut(&mailbox).expect("position implies queue");
+        let queue = self
+            .mailboxes
+            .get_mut(&mailbox)
+            .expect("position implies queue");
         let item = queue.remove(position).expect("position was checked");
         let empty = queue.is_empty();
         let tombstone = Tombstone {
@@ -376,7 +384,10 @@ impl InMemoryRelay {
         if empty {
             self.mailboxes.remove(&mailbox);
         }
-        self.tombstones.entry(mailbox).or_default().push_back(tombstone);
+        self.tombstones
+            .entry(mailbox)
+            .or_default()
+            .push_back(tombstone);
         self.acknowledged_count += 1;
         Ok(true)
     }
