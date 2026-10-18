@@ -10,8 +10,11 @@ use std::{
     os::unix::fs::DirBuilderExt,
     path::PathBuf,
     rc::Rc,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static NEXT_SANDBOX: AtomicU64 = AtomicU64::new(0);
 
 struct Sandbox(PathBuf);
 impl Sandbox {
@@ -20,7 +23,9 @@ impl Sandbox {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("e2ee-sdk-{}-{nonce}", std::process::id()));
+        let unique = NEXT_SANDBOX.fetch_add(1, Ordering::Relaxed);
+        let path =
+            std::env::temp_dir().join(format!("e2ee-sdk-{}-{nonce}-{unique}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
