@@ -10,6 +10,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 const MAGIC: [u8; 4] = *b"E2EC";
+const MAX_SUITE_ID_BYTES: usize = 128;
+const WIRE_FIXED_BYTES: usize = 4 + 2 + 2 + 2 + 4 + 4 + 8;
 pub const FORMAT_VERSION: u16 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +109,7 @@ impl std::error::Error for CapsuleError {}
 impl Capsule {
     pub fn validate(&self, limits: CapsuleLimits) -> Result<(), CapsuleError> {
         if self.suite_id.is_empty()
+            || self.suite_id.len() > MAX_SUITE_ID_BYTES
             || !self
                 .suite_id
                 .bytes()
@@ -146,6 +149,33 @@ impl Capsule {
             if !hints.insert(stanza.recipient_hint.as_slice()) {
                 return Err(CapsuleError::DuplicateRecipientHint);
             }
+        }
+
+        // validate() must enforce aggregate wire size, not just per-field
+        // limits. Otherwise a caller treating validation as a resource gate
+        // may accept many individually small stanzas whose sum exceeds policy.
+        let mut total = WIRE_FIXED_BYTES;
+        for len in [
+            self.suite_id.len(),
+            self.protected_header_ciphertext.len(),
+            self.payload_ciphertext.len(),
+        ] {
+            total = total.checked_add(len).ok_or(CapsuleError::IntegerOverflow)?;
+        }
+        for stanza in &self.recipients {
+            for len in [
+                2_usize,
+                stanza.recipient_hint.len(),
+                4,
+                stanza.encapsulated_key.len(),
+                4,
+                stanza.wrapped_content_key.len(),
+            ] {
+                total = total.checked_add(len).ok_or(CapsuleError::IntegerOverflow)?;
+            }
+        }
+        if total > limits.max_total_bytes {
+            return Err(CapsuleError::LimitExceeded);
         }
 
         Ok(())
@@ -206,6 +236,9 @@ impl Capsule {
         }
 
         let suite_len = usize::from(cursor.u16()?);
+        if suite_len > MAX_SUITE_ID_BYTES {
+            return Err(CapsuleError::LimitExceeded);
+        }
         let suite_bytes = cursor.take(suite_len)?;
         let suite_id = std::str::from_utf8(suite_bytes)
             .map_err(|_| CapsuleError::InvalidUtf8)?
