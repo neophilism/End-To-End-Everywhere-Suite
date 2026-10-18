@@ -596,7 +596,7 @@ fn validate_filename(value: &str) -> Result<(), FileError> {
         || value.len() > MAX_FILENAME_BYTES
         || value == "."
         || value == ".."
-        || value.chars().any(|c| c == '\0' || c == '/' || c == '\\')
+        || value.chars().any(|c| c.is_control() || c == '/' || c == '\\' || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}'))
     {
         return Err(FileError::InvalidFilename);
     }
@@ -878,6 +878,15 @@ mod tests {
             encrypt_file(&public, &options, b"x"),
             Err(FileError::InvalidFilename)
         );
+    }
+
+    #[test]
+    fn deceptive_desktop_filename_controls_are_rejected() {
+        let (public, _) = recipient();
+        for bad in ["hidden\n.txt", "hidden\r.txt", "hidden\t.txt", "exe\u{202e}txt", "name\u{2066}txt"] {
+            let options = FileOptions::new(bad, "text/plain");
+            assert_eq!(encrypt_file(&public, &options, b"sample"), Err(FileError::InvalidFilename));
+        }
     }
 
     #[test]
