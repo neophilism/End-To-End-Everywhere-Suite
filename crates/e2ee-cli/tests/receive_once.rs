@@ -7,9 +7,12 @@ use std::{
     os::unix::fs::{DirBuilderExt, PermissionsExt},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 const PASSWORD: &[u8] = b"strong inbox test vault password\n";
+static NEXT_SANDBOX: AtomicU64 = AtomicU64::new(0);
+
 struct Sandbox(PathBuf);
 impl Sandbox {
     fn new() -> Self {
@@ -17,7 +20,11 @@ impl Sandbox {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let p = std::env::temp_dir().join(format!("e2ee-inbox-{}-{seed}", std::process::id()));
+        let serial = NEXT_SANDBOX.fetch_add(1, Ordering::Relaxed);
+        let p = std::env::temp_dir().join(format!(
+            "e2ee-inbox-{}-{seed}-{serial}",
+            std::process::id()
+        ));
         fs::DirBuilder::new().mode(0o700).create(&p).unwrap();
         Self(p)
     }
