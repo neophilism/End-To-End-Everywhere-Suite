@@ -57,7 +57,8 @@ mod tests {
         };
         let parsed = VerificationQrCode::parse(&source.encode()).unwrap();
         assert_eq!(parsed, source);
-        assert!(source.encode().ends_with(&"ab".repeat(32)));
+        let suffix = "ab".repeat(32);
+        assert!(source.encode().ends_with(suffix.as_str()));
     }
 
     #[test]
