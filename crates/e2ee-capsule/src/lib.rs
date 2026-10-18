@@ -521,6 +521,24 @@ mod tests {
     }
 
     #[test]
+    fn configured_field_limit_cannot_override_u16_wire_prefix_capacity() {
+        let ordinary = CapsuleLimits::default();
+        let limits = CapsuleLimits {
+            max_recipient_hint_bytes: usize::from(u16::MAX) + 1,
+            ..ordinary
+        };
+        let mut data = capsule();
+        data.recipients[0].recipient_hint = vec![1_u8; usize::from(u16::MAX) + 1];
+        assert_eq!(data.validate(limits), Err(CapsuleError::IntegerOverflow));
+        assert_eq!(data.encode(limits), Err(CapsuleError::IntegerOverflow));
+
+        data.recipients[0].recipient_hint.pop();
+        assert_eq!(data.validate(limits), Ok(()));
+        let encoded = data.encode(limits).unwrap();
+        assert_eq!(Capsule::decode(&encoded, limits).unwrap(), data);
+    }
+
+    #[test]
     fn rejects_unknown_version() {
         let limits = CapsuleLimits::default();
         let mut encoded = capsule().encode(limits).unwrap();
