@@ -414,6 +414,7 @@ dependencies = [
  "e2ee-capsule",
  "e2ee-message",
  "e2ee-provenance",
+ "sha2",
 ]
 
 [[package]]
