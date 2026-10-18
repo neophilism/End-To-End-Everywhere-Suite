@@ -101,6 +101,7 @@ pub enum PairingState {
 pub enum EnrollmentError {
     InvalidIdentifier,
     InvalidExpiry,
+    NotYetValid,
     Expired,
     EndpointReuse,
     InvalidState,
@@ -113,6 +114,7 @@ impl fmt::Display for EnrollmentError {
         let message = match self {
             Self::InvalidIdentifier => "enrollment identifier is invalid",
             Self::InvalidExpiry => "pairing expiry is invalid",
+            Self::NotYetValid => "pairing offer is not yet valid",
             Self::Expired => "pairing offer has expired",
             Self::EndpointReuse => "new endpoint must differ from existing endpoint",
             Self::InvalidState => "operation is not valid in the current pairing state",
@@ -137,6 +139,9 @@ pub struct PairingSession {
 impl PairingSession {
     pub fn new(offer: PairingOffer, now_unix_seconds: u64) -> Result<Self, EnrollmentError> {
         offer.validate()?;
+        if now_unix_seconds < offer.created_at_unix_seconds {
+            return Err(EnrollmentError::NotYetValid);
+        }
         if now_unix_seconds >= offer.expires_at_unix_seconds {
             return Err(EnrollmentError::Expired);
         }
@@ -231,6 +236,9 @@ impl PairingSession {
     }
 
     fn ensure_live(&self, now_unix_seconds: u64) -> Result<(), EnrollmentError> {
+        if now_unix_seconds < self.offer.created_at_unix_seconds {
+            return Err(EnrollmentError::NotYetValid);
+        }
         if now_unix_seconds >= self.offer.expires_at_unix_seconds {
             return Err(EnrollmentError::Expired);
         }
@@ -488,6 +496,14 @@ mod tests {
             Err(EnrollmentError::TranscriptMismatch)
         );
         assert_eq!(session.state(), PairingState::Aborted);
+    }
+
+    #[test]
+    fn pairing_cannot_begin_before_offer_creation() {
+        assert!(matches!(PairingSession::new(offer(), 99), Err(EnrollmentError::NotYetValid)));
+        let mut session = PairingSession::new(offer(), 110).unwrap();
+        assert_eq!(session.accept(99), Err(EnrollmentError::NotYetValid));
+        assert_eq!(session.state(), PairingState::Offered);
     }
 
     #[test]
