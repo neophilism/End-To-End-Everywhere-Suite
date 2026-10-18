@@ -8,6 +8,7 @@
 
 use crate::Delivery;
 use e2ee_capsule::CapsuleLimits;
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, VecDeque},
     fmt,
@@ -63,6 +64,10 @@ pub struct RelayLimits {
     pub max_mailboxes: usize,
     pub max_retention_ms: u64,
     pub max_page_items: usize,
+    /// Bounded in-memory acknowledgement tombstones per mailbox.
+    pub max_acknowledged_per_mailbox: usize,
+    /// Overall acknowledgement tombstone limit (does not survive restart).
+    pub max_total_acknowledged: usize,
 }
 
 impl Default for RelayLimits {
@@ -75,6 +80,8 @@ impl Default for RelayLimits {
             max_mailboxes: 2048,
             max_retention_ms: 7 * 24 * 60 * 60 * 1000,
             max_page_items: 32,
+            max_acknowledged_per_mailbox: 64,
+            max_total_acknowledged: 4096,
         }
     }
 }
@@ -89,6 +96,8 @@ impl RelayLimits {
             || self.max_retention_ms == 0
             || self.max_page_items == 0
             || self.max_page_items > self.max_items_per_mailbox
+            || self.max_acknowledged_per_mailbox == 0
+            || self.max_total_acknowledged < self.max_acknowledged_per_mailbox
         {
             return Err(RelayError::InvalidLimits);
         }
@@ -157,6 +166,25 @@ struct Item {
     delivery: QueuedDelivery,
 }
 
+/// Retained until the originally accepted expiry. Never stores ciphertext.
+struct Tombstone {
+    upload_token: UploadToken,
+    fingerprint: [u8; 32],
+    sequence: u64,
+    expires_at_ms: u64,
+}
+
+impl fmt::Debug for Tombstone {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Tombstone")
+            .field("sequence", &self.sequence)
+            .field("expires_at_ms", &self.expires_at_ms)
+            .field("upload_token", &"[REDACTED]")
+            .field("fingerprint", &"[REDACTED]")
+            .finish()
+    }
+}
+
 /// In-memory state machine only. Restart loses unacknowledged messages;
 /// production implementations need a durable, authenticated transactional store.
 #[derive(Debug)]
@@ -164,6 +192,8 @@ pub struct InMemoryRelay {
     limits: RelayLimits,
     delivery_limits: CapsuleLimits,
     mailboxes: BTreeMap<MailboxId, VecDeque<Item>>,
+    tombstones: BTreeMap<MailboxId, VecDeque<Tombstone>>,
+    acknowledged_count: usize,
     queued_bytes: usize,
     next_sequence: u64,
     last_time_ms: Option<u64>,
@@ -175,6 +205,8 @@ impl InMemoryRelay {
             limits: limits.validate()?,
             delivery_limits,
             mailboxes: BTreeMap::new(),
+            tombstones: BTreeMap::new(),
+            acknowledged_count: 0,
             queued_bytes: 0,
             next_sequence: 0,
             last_time_ms: None,
@@ -225,6 +257,19 @@ impl InMemoryRelay {
                 };
             }
         }
+        // Do not resurrect an already acknowledged delivery on a sender retry.
+        // A digest avoids retaining the old ciphertext in the tombstone. This
+        // only deduplicates within one volatile process and the original TTL.
+        if let Some(tombstones) = self.tombstones.get(&mailbox) {
+            if let Some(item) = tombstones.iter().find(|item| item.upload_token == upload_token) {
+                let fingerprint: [u8; 32] = Sha256::digest(raw_delivery).into();
+                return if item.fingerprint == fingerprint {
+                    Ok(item.sequence)
+                } else {
+                    Err(RelayError::DuplicateUploadConflict)
+                };
+            }
+        }
 
         let count = self.mailboxes.get(&mailbox).map_or(0, VecDeque::len);
         let mailbox_bytes: usize = self.mailboxes.get(&mailbox).map_or(0, |queue| {
@@ -241,7 +286,14 @@ impl InMemoryRelay {
                 .filter(|total| *total <= self.limits.max_total_bytes)
                 .is_none()
             || (!self.mailboxes.contains_key(&mailbox)
-                && self.mailboxes.len() >= self.limits.max_mailboxes)
+                && !self.tombstones.contains_key(&mailbox)
+                && self.mailboxes.len()
+                    + self
+                        .tombstones
+                        .keys()
+                        .filter(|id| !self.mailboxes.contains_key(id))
+                        .count()
+                    >= self.limits.max_mailboxes)
         {
             return Err(RelayError::QuotaExceeded);
         }
@@ -287,6 +339,8 @@ impl InMemoryRelay {
 
     /// Destructive acknowledgement. The host MUST call this only after the
     /// recipient has durably committed authenticated replay-rejection state.
+    /// A bounded expiry-matched tombstone suppresses later upload retries;
+    /// tombstones are lost on restart and are NOT network deduplication.
     /// Return false when the item was already deleted or expired.
     pub fn acknowledge(
         &mut self,
@@ -295,26 +349,42 @@ impl InMemoryRelay {
         now_ms: u64,
     ) -> Result<bool, RelayError> {
         self.observe(now_ms)?;
-        let mut removed_size = None;
-        let mut is_empty = false;
-        if let Some(queue) = self.mailboxes.get_mut(&mailbox) {
-            if let Some(position) = queue
-                .iter()
-                .position(|item| item.delivery.sequence == sequence)
-            {
-                removed_size = queue.remove(position).map(|item| item.delivery.bytes.len());
-            }
-            is_empty = queue.is_empty();
+        let position = self.mailboxes.get(&mailbox).and_then(|queue| {
+            queue.iter().position(|item| item.delivery.sequence == sequence)
+        });
+        let Some(position) = position else {
+            return Ok(false);
+        };
+        // Preserve the queued copy when there is no room to track its retry
+        // token. Returning a false acknowledgement would invite resurrection.
+        if self.acknowledged_count >= self.limits.max_total_acknowledged
+            || self.tombstones.get(&mailbox).map_or(0, VecDeque::len)
+                >= self.limits.max_acknowledged_per_mailbox
+        {
+            return Err(RelayError::QuotaExceeded);
         }
-        if is_empty {
+        let queue = self.mailboxes.get_mut(&mailbox).expect("position implies queue");
+        let item = queue.remove(position).expect("position was checked");
+        let empty = queue.is_empty();
+        let tombstone = Tombstone {
+            upload_token: item.upload_token,
+            fingerprint: Sha256::digest(&item.delivery.bytes).into(),
+            sequence: item.delivery.sequence,
+            expires_at_ms: item.delivery.expires_at_ms,
+        };
+        self.queued_bytes -= item.delivery.bytes.len();
+        if empty {
             self.mailboxes.remove(&mailbox);
         }
-        if let Some(size) = removed_size {
-            self.queued_bytes -= size;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        self.tombstones.entry(mailbox).or_default().push_back(tombstone);
+        self.acknowledged_count += 1;
+        Ok(true)
+    }
+
+    /// Active acknowledgement tokens retained until the original expiry.
+    /// A count is not evidence of successful client delivery.
+    pub fn acknowledged_count(&self) -> usize {
+        self.acknowledged_count
     }
 
     /// Pure queue accounting; these are resource stats, not user metrics.
@@ -340,6 +410,14 @@ impl InMemoryRelay {
             !queue.is_empty()
         });
         self.queued_bytes -= removed;
+        let mut expired_tombstones = 0;
+        self.tombstones.retain(|_, tokens| {
+            let before = tokens.len();
+            tokens.retain(|item| item.expires_at_ms > now_ms);
+            expired_tombstones += before - tokens.len();
+            !tokens.is_empty()
+        });
+        self.acknowledged_count -= expired_tombstones;
         Ok(())
     }
 }
