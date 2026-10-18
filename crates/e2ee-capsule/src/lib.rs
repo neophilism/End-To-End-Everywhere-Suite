@@ -129,6 +129,16 @@ impl Capsule {
             return Err(CapsuleError::LimitExceeded);
         }
 
+        // Custom resource limits may be wider than the wire-format length
+        // fields. Validation must not claim a Capsule is encodable when
+        // an integer prefix cannot represent a declared field.
+        if u32::try_from(self.recipients.len()).is_err()
+            || u32::try_from(self.protected_header_ciphertext.len()).is_err()
+            || u64::try_from(self.payload_ciphertext.len()).is_err()
+        {
+            return Err(CapsuleError::IntegerOverflow);
+        }
+
         let mut hints = BTreeSet::new();
         for stanza in &self.recipients {
             if stanza.recipient_hint.is_empty() {
@@ -139,6 +149,12 @@ impl Capsule {
                 || stanza.wrapped_content_key.len() > limits.max_wrapped_key_bytes
             {
                 return Err(CapsuleError::LimitExceeded);
+            }
+            if u16::try_from(stanza.recipient_hint.len()).is_err()
+                || u32::try_from(stanza.encapsulated_key.len()).is_err()
+                || u32::try_from(stanza.wrapped_content_key.len()).is_err()
+            {
+                return Err(CapsuleError::IntegerOverflow);
             }
             if stanza.encapsulated_key.is_empty() {
                 return Err(CapsuleError::EmptyEncapsulatedKey);
