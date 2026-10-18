@@ -20,7 +20,9 @@ untrusted relay never decrypts or inspects protected payloads.
   **not** a secret, authorization token or account identity.
 - An uploader uses a fresh unpredictable 16-byte upload token per delivery.
   Exact retries return the same sequence without extending expiry. Reusing a
-  token with changed bytes is rejected while its delivery remains queued.
+  token with changed bytes is rejected while its delivery remains queued or an
+  expiry-bound acknowledgement tombstone exists. After acknowledgement, an
+  identical retry returns the original sequence but does **not** requeue bytes.
 - Each enqueue chooses a positive bounded retention interval. The relay
   rejects backwards clock movement, timestamp overflow, malformed or unsigned
   delivery framing, and exhaustion of configured resource budgets.
@@ -32,7 +34,7 @@ untrusted relay never decrypts or inspects protected payloads.
 
 The default prototype limits are 1 MiB per delivery, 64 messages and 8 MiB per
 mailbox, 64 MiB total, 2,048 simultaneous mailboxes, 7 days maximum retention,
-and 32 items per page. Those limits are **single-process resource bounds**,
+32 items per page, and 64 acknowledgement tombstones per mailbox / 4,096 total. Those limits are **single-process resource bounds**,
 not a shared production quota.
 
 ### Ordering and recovery
@@ -44,6 +46,16 @@ remote delivery and require an anchored reload, rather than acknowledging
 optimistically. Acknowledgement itself can fail after the relay removes an
 item, so downstream client operations must also be idempotent. Reading does
 not imply deletion.
+
+The queue retains only a SHA-256 fingerprint, retry token, sequence and original
+expiry for a successfully acknowledged message. This small **volatile**
+tombstone suppresses sender retries after acknowledgement until the original
+expiry, without retaining ciphertext. When tombstone quotas are exhausted,
+acknowledgement fails before deletion and the original ciphertext remains
+queued. Occupied tombstone-only mailboxes count toward mailbox quotas. Process
+restart still loses all tombstones; production needs durable deduplication and
+server authorization. Do not mistake a tombstone for proof that the recipient
+actually opened the message.
 
 The in-memory queue loses unacknowledged messages on process restart and
 can be bypassed if the host omits authentication checks. Production work must
