@@ -12,7 +12,9 @@ MAX_FILE_BYTES = 32 * 1024 * 1024
 
 
 class VaultError(Exception):
-    pass
+    def __init__(self, message: str, anchor: str | None = None) -> None:
+        super().__init__(message)
+        self.anchor = anchor
 
 
 def command(binary: str, state: str, action: str, context: str = "",
@@ -77,7 +79,7 @@ def execute(argv: list[str], password: str) -> str | None:
     if result.returncode:
         if new_anchor:
             raise VaultError("The operation reported an error after emitting a new anchor. "
-                             "Retain this anchor independently before inspecting state: " + new_anchor)
+                             "Inspect the state and destination before retrying.", new_anchor)
         raise VaultError("The e2ee operation failed. Inspect the destination and state "
                          "before retrying; run the CLI for detailed diagnostics.")
     if "init" in argv[-2:] and not new_anchor:
@@ -156,12 +158,15 @@ class VaultWindow(tk.Tk):
         if selected:
             self.destination.set(selected)
 
-    def show_anchor(self, anchor: str) -> None:
+    def show_anchor(self, anchor: str, uncertain: bool = False) -> None:
         dialog = tk.Toplevel(self)
         dialog.title("Retain independent anchor")
         dialog.transient(self)
-        ttk.Label(dialog, text="Identity created. Copy this token to a separate trusted place. "
-                  "It protects against local archive rollback; losing it may prevent recovery.",
+        guidance = ("Operation reported an error after emitting an anchor. Retain it "
+                    "independently and inspect state before retrying. " if uncertain else
+                    "Identity created. Copy this token to a separate trusted place. ")
+        ttk.Label(dialog, text=guidance +
+                  "This token protects against local archive rollback; losing it may prevent recovery.",
                   wraplength=520).pack(padx=16, pady=10)
         field = ttk.Entry(dialog, width=82)
         field.insert(0, anchor)
@@ -193,6 +198,9 @@ class VaultWindow(tk.Tk):
                                     parent=self)
         except VaultError as exc:
             messagebox.showerror("Vault operation", str(exc), parent=self)
+            if exc.anchor:
+                self.anchor.set(exc.anchor)
+                self.show_anchor(exc.anchor, uncertain=True)
         finally:
             self.password.set("")
 

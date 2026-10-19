@@ -86,6 +86,15 @@ class VaultBoundaryTests(unittest.TestCase):
         with patch.object(vault.subprocess, "run", return_value=result):
             self.assertEqual(vault.execute(["e2ee", "init", "me"], "private-passphrase"), anchor)
 
+    def test_anchor_on_partial_failure_is_separately_recoverable(self):
+        anchor = "b" * 140
+        result = subprocess.CompletedProcess([], 1, "", "ANCHOR " + anchor + "\n")
+        with patch.object(vault.subprocess, "run", return_value=result):
+            with self.assertRaises(vault.VaultError) as raised:
+                vault.execute(["e2ee", "init", "me"], "private-passphrase")
+            self.assertEqual(raised.exception.anchor, anchor)
+            self.assertNotIn(anchor, str(raised.exception))
+
     def test_stdin_identity_creation_uses_one_line(self):
         with patch.object(vault.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "ANCHOR " + "a" * 140 + "\n")) as run:
             vault.execute(["e2ee", "init", "me"], "private-passphrase")
