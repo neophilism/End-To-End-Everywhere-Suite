@@ -582,9 +582,10 @@
       "externalPrerequisites": [],
       "contributingPrs": [
         56,
-        57
+        57,
+        60
       ],
-      "scopeNotes": "PR 56 provides a pre-alpha Rust application transaction controller with host-supplied independent anchor persistence. Production platform adapters, stable API/ABI guarantees, language bindings and supported SDK release acceptance remain incomplete."
+      "scopeNotes": "PR 56 provides a pre-alpha Rust application transaction controller with host-supplied independent anchor persistence. Production platform adapters, stable API/ABI guarantees, language bindings and supported SDK release acceptance remain incomplete. PR 60 rechecks the authoritative independent floor after unlock and around unlocked operations; observed floor changes/read failures invalidate the controller. This is not a distributed revocation lease."
     },
     {
       "id": "E2ES-052",

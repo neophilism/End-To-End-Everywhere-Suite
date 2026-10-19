@@ -6,7 +6,7 @@ The controller owns the private archive writer guard, unlocked software vault, c
 
 ## Host responsibilities
 
-Implement `AnchorRepository` for one installation's archive slot using independently protected storage. `current` must retrieve the trusted floor. `advance` must atomically compare the exact previous anchor, enforce the same vault/endpoint and nondecreasing revision plus increasing archive sequence, durably persist the next floor, and return success only after that is complete. Conflicts and uncertain writes return an error. Do not delete or reset the slot as a retry policy.
+Implement `AnchorRepository` for one installation's archive slot using independently protected storage. `current` must retrieve the trusted floor. `advance` must atomically compare the exact previous anchor, enforce the same vault/endpoint and nondecreasing revision plus increasing archive sequence, durably persist the next floor, and return success only after that is complete. Conflicts and uncertain writes return an error. Do not delete or reset the slot as a retry policy. `current` must return the authoritative value or an error, rather than silently serving a stale cached floor.
 
 Process memory, a file next to the replayable archive, or an account-controlled server value alone does not supply the required independent protection. The in-memory implementation in the integration tests is a failure-injection test double, not a production adapter. Actual protected platform anchor adapters remain part of the platform integration work.
 
@@ -38,6 +38,10 @@ Use `observe_contact` to import an untrusted card, then compare the complete car
 
 ## Transaction and failure contract
 
+The controller rechecks the independent floor after archive unlock and before each operation that uses unlocked state. Signed text and file outputs get a second floor check before release. A missing, changed or unavailable floor locks the controller and requires a fresh open; restoring the old repository value does not reactivate that controller. Public cached identity cards and the last accepted anchor remain inspectable for diagnosis.
+
+These observations and write-time compare-and-swap detect a superseded controller; they are not a distributed revocation lease. The host must serialize recovery, anchor-slot updates and application use when strict ordering across concurrent controllers is required. A separate actor can still change the floor after the final read. The SDK does not promise instantaneous revocation across machines or release already-returned data.
+
 1. Authenticate and validate the requested operation under current trust and lock policy.
 2. Commit the complete encrypted archive through the private atomic storage adapter.
 3. Advance the independently protected floor with compare-and-swap.
@@ -57,4 +61,4 @@ The SDK also provides [anchored local checkpoint export and recovery](local-back
 
 ## Evidence
 
-External-consumer integration tests use real encryption and real private archive files. They cover unverified contacts, signed text and binary attachments, wrong contexts without state changes, receipt persistence across fresh controllers, rollback under a newer floor, durable revocation, timeout, redacted debug output, missing-anchor rejection, and anchor failures both before and after a simulated write. The fake anchor adapter checks that a new encrypted archive is visible before every attempted floor update. Passing these tests does not establish a production platform anchor implementation or independent security certification.
+External-consumer integration tests use real encryption and real private archive files. They cover unverified contacts, signed text and binary attachments, wrong contexts without state changes, receipt persistence across fresh controllers, rollback under a newer floor, durable revocation, timeout, redacted debug output, missing-anchor rejection, anchor failures both before and after a simulated write, same-endpoint recovery that supersedes a still-unlocked controller, floor deletion/change/read failures, and read failure after signing but before delivery release. The fake anchor adapter checks that a new encrypted archive is visible before every attempted floor update. Passing these tests does not establish a production platform anchor implementation or independent security certification.
