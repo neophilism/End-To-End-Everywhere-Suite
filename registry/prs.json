@@ -615,7 +615,11 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        62
+      ],
+      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery."
     },
     {
       "id": "E2ES-055",
