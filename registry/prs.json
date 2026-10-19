@@ -104,7 +104,12 @@
       ],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        67,
+        68
+      ],
+      "scopeNotes": " PRs 67–68 add aggregate wire-size and length-prefix validation guards, pending exact-head integration verification."
     },
     {
       "id": "E2ES-009",
@@ -679,10 +684,12 @@
       "contributingPrs": [
         58,
         64,
-        65
+        65,
+        67,
+        68
       ],
       "fileIoEvidenceScope": "PR 58 adds local Unix import/export boundary hardening and filesystem failure tests. It does not complete the broader audit, reproducible-build or conformance milestone.",
-      "scopeNotes": "PR 64 pins selected first-party CI actions, adds build caches, timeout guards and cancels superseded PR runs; these are build-automation controls, not independent audit, reproducibility or production conformance evidence. PR 65 adds source-backed provisional component/data-flow discovery and structural validation; coverage and external conformity reviews remain pending."
+      "scopeNotes": "PR 64 pins selected first-party CI actions, adds build caches, timeout guards and cancels superseded PR runs; these are build-automation controls, not independent audit, reproducibility or production conformance evidence. PR 65 adds source-backed provisional component/data-flow discovery and structural validation; coverage and external conformity reviews remain pending. PRs 67–68 add aggregate wire-size and length-prefix validation guards, pending exact-head integration verification."
     }
   ],
   "pullRequests": [
