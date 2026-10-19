@@ -227,6 +227,20 @@ impl<A: AnchorRepository> SoftwareClient<A> {
             client.lock();
             return Err(error.into());
         }
+        // A different controller may have advanced the independent floor
+        // before this installation is returned to the host. Detect changes
+        // observable at the commit boundary, including anchor read failures.
+        match anchors.current() {
+            Ok(Some(current)) if current == anchor => {}
+            Ok(_) => {
+                client.lock();
+                return Err(AnchorError::Conflict.into());
+            }
+            Err(error) => {
+                client.lock();
+                return Err(error.into());
+            }
+        }
         Ok(Self {
             client,
             store,
@@ -501,6 +515,13 @@ impl<A: AnchorRepository> SoftwareClient<A> {
         let result = (|| {
             let saved = self.store.read()?.ok_or(SdkError::MissingArchive)?;
             self.anchors.advance(Some(&self.anchor), &next)?;
+            // A successful compare-and-swap alone does not prove that the
+            // trusted floor is still current when returning an opened message.
+            // This is an observation, not a cross-controller revocation lease.
+            match self.anchors.current()? {
+                Some(current) if current == next => {}
+                _ => return Err(AnchorError::Conflict.into()),
+            }
             self.digest = saved.digest;
             self.anchor = next;
             Ok(())
