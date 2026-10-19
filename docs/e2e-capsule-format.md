@@ -69,4 +69,6 @@ Decoding untrusted Capsules is bounded by configurable limits for recipient coun
 - truncation; and
 - trailing bytes.
 
+Configured resource budgets may be larger than a wire length prefix can represent. Validation now also rejects recipient-hint lengths beyond u16 and encapsulated/wrapped key lengths beyond u32 (as well as impossible u32 recipient counts/header sizes or u64 payload sizes), before accepting the object. This keeps `validate` and `encode` consistent even with custom application limits.
+
 The parser does not release plaintext. Decryption and authentication happen in later profile-specific layers.
