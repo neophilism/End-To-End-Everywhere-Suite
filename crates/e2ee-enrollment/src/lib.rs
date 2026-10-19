@@ -5,6 +5,8 @@
 //! A newly enrolled device is not an authorized E2EE endpoint until both sides
 //! of a pairing ceremony confirm the same verification transcript.
 
+pub mod verification_uri;
+
 use e2ee_core::{DeviceId, EndpointId, UserId};
 use e2ee_keystore::SecretHandle;
 use std::{collections::BTreeMap, fmt};
