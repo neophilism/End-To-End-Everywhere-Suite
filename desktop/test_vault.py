@@ -98,6 +98,22 @@ class VaultBoundaryTests(unittest.TestCase):
             with self.assertRaises(vault.VaultError):
                 vault.command(str(link), str(link) + "-state", "init", endpoint="me")
 
+    def test_capability_probe_before_credential_handoff(self):
+        good = {"schema_version": 1, "component": "local-cli",
+                "features": {"self_encrypted_files": True,
+                             "software_password_vault": True,
+                             "private_atomic_file_publication": True}}
+        with patch.object(vault.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0, __import__("json").dumps(good), "")) as run:
+            vault.verify_cli("/absolute/e2ee")
+            self.assertEqual(run.call_args.args[0], ["/absolute/e2ee", "--capabilities-json"])
+            self.assertNotIn("input", run.call_args.kwargs)
+        good["features"]["self_encrypted_files"] = False
+        with patch.object(vault.subprocess, "run",
+                          return_value=subprocess.CompletedProcess([], 0, __import__("json").dumps(good), "")):
+            with self.assertRaises(vault.VaultError):
+                vault.verify_cli("/absolute/e2ee")
+
     def test_anchor_is_required_unless_password_only_is_explicit(self):
         import tempfile
         with tempfile.TemporaryDirectory() as root:

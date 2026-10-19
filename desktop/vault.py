@@ -1,6 +1,7 @@
 """Pre-alpha local desktop file vault. Requires Tk and the Suite e2ee CLI."""
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -68,6 +69,26 @@ def command(binary: str, state: str, action: str, context: str = "",
     except OSError as exc:
         raise VaultError("Could not inspect the selected file paths; choose them again.") from exc
     return prefix + [action, context, source, destination]
+
+
+def verify_cli(binary: str) -> None:
+    """Reject incompatible executables before giving a process a passphrase."""
+    try:
+        result = subprocess.run([binary, "--capabilities-json"], text=True,
+                                capture_output=True, timeout=10, check=False)
+        document = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
+        raise VaultError("Could not verify the selected e2ee program capabilities.") from exc
+    if not isinstance(document, dict):
+        raise VaultError("Selected program returned an invalid capability inventory.")
+    features = document.get("features", {})
+    if (result.returncode != 0 or document.get("schema_version") != 1
+            or document.get("component") != "local-cli"
+            or not isinstance(features, dict)
+            or not all(features.get(name) is True for name in (
+                "self_encrypted_files", "software_password_vault",
+                "private_atomic_file_publication"))):
+        raise VaultError("Selected program does not advertise the required local vault capabilities.")
 
 
 def execute(argv: list[str], password: str) -> str | None:
@@ -196,6 +217,7 @@ class VaultWindow(tk.Tk):
                 parent=self
             ):
                 return
+            verify_cli(argv[0])
             new_anchor = execute(argv, self.password.get())
             if new_anchor:
                 self.anchor.set(new_anchor)
