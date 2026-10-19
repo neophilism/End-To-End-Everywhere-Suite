@@ -1,5 +1,7 @@
 """Tk desktop surface for the Suite local encrypted file vault."""
 import tkinter as tk
+from queue import Empty, Queue
+from threading import Thread
 from tkinter import filedialog, messagebox, ttk
 
 from vault_core import VaultError, command, execute, verify_cli
@@ -10,6 +12,10 @@ class VaultWindow(tk.Tk):
         super().__init__()
         self.title("End-To-End Everywhere • Local file vault (pre-alpha)")
         self.resizable(True, False)
+        self._busy = False
+        self._results = Queue()
+        self._controls = []
+        self.protocol("WM_DELETE_WINDOW", self.close_window)
         self.binary = tk.StringVar()
         self.state = tk.StringVar()
         self.endpoint = tk.StringVar()
@@ -37,28 +43,42 @@ class VaultWindow(tk.Tk):
             ttk.Label(frame, text=label).grid(row=row, column=0, sticky="w", pady=3)
             entry = ttk.Entry(frame, textvariable=variable, show="•" if variable is self.password else "")
             entry.grid(row=row, column=1, sticky="ew", padx=8, pady=3)
+            self._controls.append(entry)
             if variable is self.binary:
-                ttk.Button(frame, text="Choose", command=self.choose_program).grid(row=row, column=2)
+                button = ttk.Button(frame, text="Choose", command=self.choose_program)
+                button.grid(row=row, column=2)
+                self._controls.append(button)
             if variable is self.source:
-                ttk.Button(frame, text="Choose", command=self.choose_input).grid(row=row, column=2)
+                button = ttk.Button(frame, text="Choose", command=self.choose_input)
+                button.grid(row=row, column=2)
+                self._controls.append(button)
             if variable is self.destination:
-                ttk.Button(frame, text="Choose", command=self.choose_output).grid(row=row, column=2)
+                button = ttk.Button(frame, text="Choose", command=self.choose_output)
+                button.grid(row=row, column=2)
+                self._controls.append(button)
         note = (
             "Files are encrypted on this device. Decrypted exports are private local "
             "files; other copies of the original remain where you saved them.\n"
             "Password-only mode has no independent identity pin or rollback protection. "
             "No native platform key store or synchronization is provided."
         )
-        ttk.Checkbutton(frame, text="I accept password-only mode without rollback protection",
-                        variable=self.password_only).grid(row=8, column=0, columnspan=3, sticky="w")
+        mode = ttk.Checkbutton(frame, text="I accept password-only mode without rollback protection",
+                               variable=self.password_only)
+        mode.grid(row=8, column=0, columnspan=3, sticky="w")
+        self._controls.append(mode)
         ttk.Label(frame, text=note, wraplength=550).grid(
             row=9, column=0, columnspan=3, sticky="w", pady=10
         )
         actions = ttk.Frame(frame)
         actions.grid(row=10, column=0, columnspan=3, sticky="ew")
-        ttk.Button(actions, text="Create identity", command=lambda: self.perform("init")).pack(side="left", padx=3)
-        ttk.Button(actions, text="Encrypt to self", command=lambda: self.perform("seal-self-file")).pack(side="left", padx=3)
-        ttk.Button(actions, text="Verify and export", command=lambda: self.perform("open-self-file")).pack(side="left", padx=3)
+        for title, action in [("Create identity", "init"),
+                              ("Encrypt to self", "seal-self-file"),
+                              ("Verify and export", "open-self-file")]:
+            button = ttk.Button(actions, text=title, command=lambda kind=action: self.perform(kind))
+            button.pack(side="left", padx=3)
+            self._controls.append(button)
+        self.status = tk.StringVar(value="Ready")
+        ttk.Label(frame, textvariable=self.status).grid(row=11, column=0, columnspan=3, sticky="w")
 
     def choose_program(self) -> None:
         selected = filedialog.askopenfilename(parent=self)
@@ -93,7 +113,42 @@ class VaultWindow(tk.Tk):
         dialog.grab_set()
         self.wait_window(dialog)
 
+    def close_window(self) -> None:
+        if self._busy:
+            messagebox.showwarning("Vault operation", "Wait for this file operation to finish before closing.", parent=self)
+        else:
+            self.destroy()
+
+    def set_busy(self, busy: bool) -> None:
+        self._busy = busy
+        self.status.set("Working with local encrypted files…" if busy else "Ready")
+        for control in self._controls:
+            control.state(["disabled"] if busy else ["!disabled"])
+
+    def poll_result(self) -> None:
+        try:
+            new_anchor, error = self._results.get_nowait()
+        except Empty:
+            self.after(100, self.poll_result)
+            return
+        self.set_busy(False)
+        if error:
+            messagebox.showerror("Vault operation", str(error), parent=self)
+            if error.anchor:
+                self.anchor.set(error.anchor)
+                self.show_anchor(error.anchor, uncertain=True)
+        elif new_anchor:
+            self.anchor.set(new_anchor)
+            self.password_only.set(False)
+            self.show_anchor(new_anchor)
+        else:
+            messagebox.showinfo("Completed", "Operation completed. Keep the original "
+                                "and exported files according to your own retention plan.",
+                                parent=self)
+
     def perform(self, action: str) -> None:
+        if self._busy:
+            return
         try:
             argv = command(self.binary.get(), self.state.get(), action,
                            self.context.get(), self.source.get(),
@@ -104,21 +159,24 @@ class VaultWindow(tk.Tk):
                 parent=self
             ):
                 return
-            verify_cli(argv[0])
-            new_anchor = execute(argv, self.password.get())
-            if new_anchor:
-                self.anchor.set(new_anchor)
-                self.password_only.set(False)
-                self.show_anchor(new_anchor)
-            else:
-                messagebox.showinfo("Completed", "Operation completed. Keep the original "
-                                    "and exported files according to your own retention plan.",
-                                    parent=self)
+            password = self.password.get()
+            self.password.set("")
+            self.set_busy(True)
+
+            def work() -> None:
+                try:
+                    verify_cli(argv[0])
+                    self._results.put((execute(argv, password), None))
+                except VaultError as exc:
+                    self._results.put((None, exc))
+                except Exception:
+                    self._results.put((None, VaultError(
+                        "Unexpected local client failure. Inspect selected files and state before retrying.")))
+
+            Thread(target=work, daemon=True).start()
+            self.after(100, self.poll_result)
         except VaultError as exc:
             messagebox.showerror("Vault operation", str(exc), parent=self)
-            if exc.anchor:
-                self.anchor.set(exc.anchor)
-                self.show_anchor(exc.anchor, uncertain=True)
         finally:
             self.password.set("")
 
