@@ -12,6 +12,8 @@ Choose the built executable by its absolute path (not a symlink) and a **new** p
 
 Creation displays a new 140-character anchor. Retain it in a separate trusted place, then supply it for later operations to detect identity/archive rollback. Self-file encryption and opening do not change the archive or rotate the anchor. If the anchor is unavailable, the explicit password-only checkbox permits a weaker local mode without independent identity pin or rollback protection. The interface has no platform key store, sync, or automatic source deletion. Keep the passphrase and original files according to your retention needs. Decrypted exports are ordinary private local files, not protected after another application reads or copies them. The 32 MiB inline limit and Unix private-file output restriction still apply. Do not use this pre-alpha interface for production secrets.
 
+The pre-alpha artifact job also runs `desktop/integration_smoke.py` against its freshly built CLI on macOS and Linux, using throwaway state and test data. This is a command-line integration check; it does not establish visual accessibility or signed release provenance.
+
 Run controller tests without opening a display:
 
 ```sh

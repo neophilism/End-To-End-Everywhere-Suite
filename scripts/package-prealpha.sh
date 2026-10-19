@@ -8,7 +8,7 @@ fi
 binary="$1"
 platform="$2"
 out="$3"
-script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
 python3 - "$script_dir/../desktop/vault.py" <<'PY'
 import pathlib
 import sys
@@ -23,6 +23,7 @@ if [ ! -f "$binary" ] || [ -L "$binary" ]; then
   echo "expected a regular, non-symlink CLI binary" >&2
   exit 2
 fi
+python3 "$script_dir/../desktop/integration_smoke.py" "$binary"
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
 tmp="$(mktemp -d)"
