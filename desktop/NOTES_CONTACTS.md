@@ -1,0 +1,9 @@
+# Desktop notes, contacts and QR transcript (pre-alpha)
+
+Run `python3 desktop/notes_contacts.py` with Python Tk support and a locally built `e2ee` CLI. This interface delegates encryption, signature verification, contact pinning and private file creation to the CLI. It does not store credentials. The CLI capability query is checked before an operation. Native Windows state storage is not supported.
+
+Select the existing identity state directory and the CLI executable. Use an independent 140-character archive anchor or explicitly choose password-only mode, which lacks an independent rollback pin. Enter the passphrase for each operation. For anchored state changes, retain the emitted new anchor independently before continuing; the field is cleared to require re-entry. A failed operation may still have changed state or published an output: inspect local state and the destination before retrying.
+
+The notes tab seals or opens an input file under a chosen ASCII purpose context to a **new** output file. Do not select the same input and output. The contact tab imports a public card without granting trust, lists contacts, and requires a complete fingerprint compared over an independent channel before verification. The QR tab accepts a pasted canonical `e2ee-verify-v1:` transcript payload and compares its enrollment ID and digest with local values. QR inspection and comparison do not authorize a device or contact; confirm the matching transcript on both devices before any enrollment finalization. Camera scanning and enrollment finalization are not implemented in this view.
+
+Run `python3 -m unittest discover -s desktop -p 'test_notes.py'` for headless validation. The tests cover canonical and malicious QR text, explicit trust input, new file protection, capability gating, passphrase stdin, and anchor reconciliation. They do not replace native CLI integration or platform packaging validation.
