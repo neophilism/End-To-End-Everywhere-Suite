@@ -54,6 +54,25 @@ class VaultBoundaryTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
             self.assertTrue(run.call_args.kwargs["capture_output"])
 
+    def test_relative_paths_and_disappearing_input_fail_closed(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            binary = str(pathlib.Path(sys.executable).resolve())
+            with self.assertRaises(vault.VaultError):
+                vault.command(binary, "relative-state", "init", endpoint="me")
+            source = pathlib.Path(root, "gone")
+            source.write_bytes(b"x")
+            source.unlink()
+            with self.assertRaises(vault.VaultError):
+                vault.command(binary, root + "/state", "seal-self-file",
+                              "personal-file", str(source), root + "/out",
+                              password_only=True)
+            source.write_bytes(b"x")
+            with self.assertRaises(vault.VaultError):
+                vault.command(binary, root + "/state", "seal-self-file",
+                              "personal-file", str(source), "relative-output",
+                              password_only=True)
+
     def test_path_lookup_and_symlink_program_are_rejected(self):
         with self.assertRaises(vault.VaultError):
             vault.command("e2ee", "/tmp/new-state", "init", endpoint="me")

@@ -22,6 +22,8 @@ def command(binary: str, state: str, action: str, context: str = "",
             anchor: str = "", password_only: bool = False) -> list[str]:
     if not binary or not state:
         raise VaultError("Select the e2ee program and a local state directory.")
+    if not Path(state).is_absolute():
+        raise VaultError("Choose an absolute state directory path.")
     executable = Path(binary)
     if (not executable.is_absolute() or executable.is_symlink()
             or not executable.is_file() or not os.access(executable, os.X_OK)):
@@ -50,14 +52,19 @@ def command(binary: str, state: str, action: str, context: str = "",
         33 <= ord(c) <= 126 for c in context
     ):
         raise VaultError("Context must be 1–256 printable ASCII characters without spaces.")
-    if not Path(source).is_file():
-        raise VaultError("Select a regular input file.")
-    if Path(source).stat().st_size > MAX_FILE_BYTES:
-        raise VaultError("Input exceeds the 32 MiB inline file limit.")
-    if not destination or os.path.lexists(destination):
-        raise VaultError("Choose a new destination; existing files are never overwritten.")
-    if Path(source).resolve() == Path(destination).resolve():
-        raise VaultError("Input and destination must differ.")
+    if not Path(source).is_absolute() or not Path(destination).is_absolute():
+        raise VaultError("Select absolute input and output paths.")
+    try:
+        if not Path(source).is_file():
+            raise VaultError("Select a regular input file.")
+        if Path(source).stat().st_size > MAX_FILE_BYTES:
+            raise VaultError("Input exceeds the 32 MiB inline file limit.")
+        if not destination or os.path.lexists(destination):
+            raise VaultError("Choose a new destination; existing files are never overwritten.")
+        if Path(source).resolve() == Path(destination).resolve():
+            raise VaultError("Input and destination must differ.")
+    except OSError as exc:
+        raise VaultError("Could not inspect the selected file paths; choose them again.") from exc
     return prefix + [action, context, source, destination]
 
 
