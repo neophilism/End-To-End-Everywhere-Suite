@@ -19,6 +19,10 @@ def command(binary: str, state: str, action: str, context: str = "",
             source: str = "", destination: str = "", endpoint: str = "") -> list[str]:
     if not binary or not state:
         raise VaultError("Select the e2ee program and a local state directory.")
+    executable = Path(binary)
+    if (not executable.is_absolute() or executable.is_symlink()
+            or not executable.is_file() or not os.access(executable, os.X_OK)):
+        raise VaultError("Select an absolute path to a regular executable e2ee program.")
     prefix = [binary, "--state", state, "--software-vault",
               "--password-only", "--password-stdin"]
     if action == "init":
@@ -71,7 +75,7 @@ class VaultWindow(tk.Tk):
         super().__init__()
         self.title("End-To-End Everywhere • Local file vault (pre-alpha)")
         self.resizable(True, False)
-        self.binary = tk.StringVar(value="e2ee")
+        self.binary = tk.StringVar()
         self.state = tk.StringVar()
         self.endpoint = tk.StringVar()
         self.password = tk.StringVar()
@@ -95,6 +99,8 @@ class VaultWindow(tk.Tk):
             ttk.Label(frame, text=label).grid(row=row, column=0, sticky="w", pady=3)
             entry = ttk.Entry(frame, textvariable=variable, show="•" if variable is self.password else "")
             entry.grid(row=row, column=1, sticky="ew", padx=8, pady=3)
+            if variable is self.binary:
+                ttk.Button(frame, text="Choose", command=self.choose_program).grid(row=row, column=2)
             if variable is self.source:
                 ttk.Button(frame, text="Choose", command=self.choose_input).grid(row=row, column=2)
             if variable is self.destination:
@@ -113,6 +119,11 @@ class VaultWindow(tk.Tk):
         ttk.Button(actions, text="Create identity", command=lambda: self.perform("init")).pack(side="left", padx=3)
         ttk.Button(actions, text="Encrypt to self", command=lambda: self.perform("seal-self-file")).pack(side="left", padx=3)
         ttk.Button(actions, text="Verify and export", command=lambda: self.perform("open-self-file")).pack(side="left", padx=3)
+
+    def choose_program(self) -> None:
+        selected = filedialog.askopenfilename(parent=self)
+        if selected:
+            self.binary.set(selected)
 
     def choose_input(self) -> None:
         selected = filedialog.askopenfilename(parent=self)

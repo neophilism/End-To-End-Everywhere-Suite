@@ -2,6 +2,7 @@
 import importlib.util
 import pathlib
 import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -18,7 +19,7 @@ class VaultBoundaryTests(unittest.TestCase):
             source = pathlib.Path(root, "input")
             source.write_bytes(b"hello")
             output = pathlib.Path(root, "sealed.e2ed")
-            argv = vault.command("e2ee", str(pathlib.Path(root, "state")),
+            argv = vault.command(str(pathlib.Path(sys.executable).resolve()), str(pathlib.Path(root, "state")),
                                  "seal-self-file", "personal-file",
                                  str(source), str(output))
             self.assertEqual(argv[-4:], ["seal-self-file", "personal-file",
@@ -26,7 +27,7 @@ class VaultBoundaryTests(unittest.TestCase):
             self.assertIn("--password-stdin", argv)
             output.write_bytes(b"existing")
             with self.assertRaises(vault.VaultError):
-                vault.command("e2ee", str(pathlib.Path(root, "state")),
+                vault.command(str(pathlib.Path(sys.executable).resolve()), str(pathlib.Path(root, "state")),
                               "seal-self-file", "personal-file",
                               str(source), str(output))
             self.assertEqual(output.read_bytes(), b"existing")
@@ -37,11 +38,11 @@ class VaultBoundaryTests(unittest.TestCase):
             source = pathlib.Path(root, "input")
             source.write_bytes(b"x")
             with self.assertRaises(vault.VaultError):
-                vault.command("e2ee", root + "/state", "open-self-file",
+                vault.command(str(pathlib.Path(sys.executable).resolve()), root + "/state", "open-self-file",
                               "bad\ncontext", str(source), root + "/out")
             with patch.object(vault, "MAX_FILE_BYTES", 0):
                 with self.assertRaises(vault.VaultError):
-                    vault.command("e2ee", root + "/state", "seal-self-file",
+                    vault.command(str(pathlib.Path(sys.executable).resolve()), root + "/state", "seal-self-file",
                                   "personal-file", str(source), root + "/out")
 
     def test_passphrase_is_stdin_only_and_cli_diagnostics_are_not_echoed(self):
@@ -53,6 +54,16 @@ class VaultBoundaryTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
             self.assertTrue(run.call_args.kwargs["capture_output"])
 
+    def test_path_lookup_and_symlink_program_are_rejected(self):
+        with self.assertRaises(vault.VaultError):
+            vault.command("e2ee", "/tmp/new-state", "init", endpoint="me")
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            link = pathlib.Path(root, "e2ee")
+            link.symlink_to(sys.executable)
+            with self.assertRaises(vault.VaultError):
+                vault.command(str(link), str(link) + "-state", "init", endpoint="me")
+
     def test_stdin_identity_creation_uses_one_line(self):
         with patch.object(vault.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")) as run:
             vault.execute(["e2ee", "init", "me"], "private-passphrase", initializing=True)
@@ -62,7 +73,7 @@ class VaultBoundaryTests(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaises(vault.VaultError):
-                vault.command("e2ee", root, "init", endpoint="me")
+                vault.command(str(pathlib.Path(sys.executable).resolve()), root, "init", endpoint="me")
 
 
 if __name__ == "__main__":
