@@ -570,9 +570,10 @@
         54,
         55,
         58,
-        61
+        61,
+        63
       ],
-      "scopeNotes": " PR 61 rechecks the authoritative floor after successful SDK commits; it detects observable conflicts but not races after the final read."
+      "scopeNotes": "PR 61 rechecks the authoritative floor after successful SDK commits; it detects observable conflicts but not races after the final read. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay."
     },
     {
       "id": "E2ES-051",
@@ -617,9 +618,10 @@
       "externalDependencies": [],
       "externalPrerequisites": [],
       "contributingPrs": [
-        62
+        62,
+        63
       ],
-      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery."
+      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay."
     },
     {
       "id": "E2ES-055",
