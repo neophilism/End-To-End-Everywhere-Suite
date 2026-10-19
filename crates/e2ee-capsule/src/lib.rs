@@ -160,7 +160,9 @@ impl Capsule {
             self.protected_header_ciphertext.len(),
             self.payload_ciphertext.len(),
         ] {
-            total = total.checked_add(len).ok_or(CapsuleError::IntegerOverflow)?;
+            total = total
+                    .checked_add(len)
+                    .ok_or(CapsuleError::IntegerOverflow)?;
         }
         for stanza in &self.recipients {
             for len in [
@@ -171,7 +173,9 @@ impl Capsule {
                 4,
                 stanza.wrapped_content_key.len(),
             ] {
-                total = total.checked_add(len).ok_or(CapsuleError::IntegerOverflow)?;
+                total = total
+                    .checked_add(len)
+                    .ok_or(CapsuleError::IntegerOverflow)?;
             }
         }
         if total > limits.max_total_bytes {
