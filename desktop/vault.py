@@ -9,6 +9,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 MAX_FILE_BYTES = 32 * 1024 * 1024
+MAX_DELIVERY_BYTES = 40 * 1024 * 1024
 
 
 class VaultError(Exception):
@@ -57,8 +58,9 @@ def command(binary: str, state: str, action: str, context: str = "",
     try:
         if not Path(source).is_file():
             raise VaultError("Select a regular input file.")
-        if Path(source).stat().st_size > MAX_FILE_BYTES:
-            raise VaultError("Input exceeds the 32 MiB inline file limit.")
+        limit = MAX_FILE_BYTES if action == "seal-self-file" else MAX_DELIVERY_BYTES
+        if Path(source).stat().st_size > limit:
+            raise VaultError("Input exceeds the selected file operation limit.")
         if not destination or os.path.lexists(destination):
             raise VaultError("Choose a new destination; existing files are never overwritten.")
         if Path(source).resolve() == Path(destination).resolve():

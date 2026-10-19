@@ -54,6 +54,21 @@ class VaultBoundaryTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
             self.assertTrue(run.call_args.kwargs["capture_output"])
 
+    def test_encrypted_delivery_has_its_own_input_limit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            source = pathlib.Path(root, "delivery")
+            source.write_bytes(b"encrypted")
+            binary = str(pathlib.Path(sys.executable).resolve())
+            with patch.object(vault, "MAX_FILE_BYTES", 1):
+                vault.command(binary, root + "/state", "open-self-file",
+                              "personal-file", str(source), root + "/out",
+                              password_only=True)
+                with self.assertRaises(vault.VaultError):
+                    vault.command(binary, root + "/state", "seal-self-file",
+                                  "personal-file", str(source), root + "/out",
+                                  password_only=True)
+
     def test_relative_paths_and_disappearing_input_fail_closed(self):
         import tempfile
         with tempfile.TemporaryDirectory() as root:
