@@ -569,8 +569,11 @@
         53,
         54,
         55,
-        58
-      ]
+        58,
+        61,
+        63
+      ],
+      "scopeNotes": "PR 61 rechecks the authoritative floor after successful SDK commits; it detects observable conflicts but not races after the final read. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay."
     },
     {
       "id": "E2ES-051",
@@ -583,9 +586,10 @@
       "contributingPrs": [
         56,
         57,
-        60
+        60,
+        61
       ],
-      "scopeNotes": "PR 56 provides a pre-alpha Rust application transaction controller with host-supplied independent anchor persistence. Production platform adapters, stable API/ABI guarantees, language bindings and supported SDK release acceptance remain incomplete. PR 60 rechecks the authoritative independent floor after unlock and around unlocked operations; observed floor changes/read failures invalidate the controller. This is not a distributed revocation lease."
+      "scopeNotes": "PR 56 provides a pre-alpha Rust application transaction controller with host-supplied independent anchor persistence. Production platform adapters, stable API/ABI guarantees, language bindings and supported SDK release acceptance remain incomplete. PR 60 rechecks the authoritative independent floor after unlock and around unlocked operations; observed floor changes/read failures invalidate the controller. This is not a distributed revocation lease. PR 61 rechecks the authoritative floor after successful SDK commits; it detects observable conflicts but not races after the final read."
     },
     {
       "id": "E2ES-052",
@@ -612,7 +616,12 @@
       "prs": [],
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        62,
+        63
+      ],
+      "scopeNotes": "PR 62 supplies a bounded volatile in-memory ciphertext mailbox contract, not authenticated network routing, durable queues or production delivery. PR 63 adds real SDK↔relay local contract testing for acknowledgements after anchored commit and retention on uncertain writes; it is not a durable production relay."
     },
     {
       "id": "E2ES-055",

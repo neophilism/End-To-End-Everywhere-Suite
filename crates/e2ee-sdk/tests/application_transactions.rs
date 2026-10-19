@@ -48,6 +48,8 @@ struct AnchorState {
     archive: PathBuf,
     last_archive: Vec<u8>,
     reads_before_failure: Option<usize>,
+    advance_then_replace: bool,
+    advance_then_fail_read: bool,
 }
 
 // Test double only: process memory is NOT an independent durable anchor store.
@@ -61,6 +63,8 @@ impl TestAnchors {
             archive: path.join("state.e2es"),
             last_archive: Vec::new(),
             reads_before_failure: None,
+            advance_then_replace: false,
+            advance_then_fail_read: false,
         })))
     }
     fn floor(&self) -> Option<ArchiveAnchor> {
@@ -105,6 +109,16 @@ impl AnchorRepository for TestAnchors {
         }
         state.value = Some(next.clone());
         state.last_archive = saved;
+        if state.advance_then_replace {
+            state.advance_then_replace = false;
+            let mut replacement = next.clone();
+            replacement.minimum_sequence += 1;
+            state.value = Some(replacement);
+        }
+        if state.advance_then_fail_read {
+            state.advance_then_fail_read = false;
+            state.reads_before_failure = Some(0);
+        }
         if state.failure == Failure::AfterWrite {
             return Err(AnchorError::Unavailable);
         }
@@ -559,4 +573,82 @@ fn unlock_rechecks_the_floor_after_authenticating_the_archive() {
         Err(SdkError::Anchor(AnchorError::Conflict))
     ));
     assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
+}
+
+#[test]
+fn post_commit_floor_change_or_read_failure_prevents_reporting_success() {
+    // The archive and first trusted advance may already have committed.
+    // The caller must never treat the uncertain return as an unused receipt.
+    for fail_read in [false, true] {
+        let root = Sandbox::new();
+        let ap = root.0.join("alice");
+        let bp = root.0.join("bob");
+        let aa = TestAnchors::new(&ap);
+        let ba = TestAnchors::new(&bp);
+        let mut alice = create(&ap, "alice", &aa);
+        let mut bob = create(&bp, "bob", &ba);
+        pair(&mut alice, &mut bob);
+        let delivery = alice
+            .seal_text(
+                &[id("bob")],
+                "post-commit",
+                "never returned on uncertain floor",
+                3,
+            )
+            .unwrap();
+        {
+            let mut state = ba.0.borrow_mut();
+            state.advance_then_replace = !fail_read;
+            state.advance_then_fail_read = fail_read;
+        }
+        let result = bob.receive_text(&id("alice"), "post-commit", &delivery, 3);
+        if fail_read {
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Unavailable))
+            ));
+        } else {
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Conflict))
+            ));
+        }
+        assert!(bob.needs_reload());
+        assert!(matches!(bob.contacts(4), Err(SdkError::ReloadRequired)));
+        assert!(fs::read(bp.join("state.e2es")).unwrap().len() > 100);
+    }
+}
+
+#[test]
+fn installation_commit_rechecks_authoritative_floor() {
+    for fail_read in [false, true] {
+        let root = Sandbox::new();
+        let ap = root.0.join("alice");
+        let anchors = TestAnchors::new(&ap);
+        {
+            let mut state = anchors.0.borrow_mut();
+            state.advance_then_replace = !fail_read;
+            state.advance_then_fail_read = fail_read;
+        }
+        let result = SoftwareClient::create(
+            PrivateStateStore::create(&ap).unwrap(),
+            anchors.clone(),
+            id("alice"),
+            password(),
+            SoftwareOptions::default(),
+            0,
+        );
+        if fail_read {
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Unavailable))
+            ));
+        } else {
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Conflict))
+            ));
+        }
+        assert!(fs::read(ap.join("state.e2es")).unwrap().len() > 100);
+    }
 }
