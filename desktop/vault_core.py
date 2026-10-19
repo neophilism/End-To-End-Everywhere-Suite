@@ -110,9 +110,13 @@ def execute(argv: list[str], password: str) -> str | None:
                              "Inspect the state and destination before retrying.", new_anchor)
         raise VaultError("The e2ee operation failed. Inspect the destination and state "
                          "before retrying; run the CLI for detailed diagnostics.")
-    if "init" in argv[-2:] and not new_anchor:
+    initializing = "init" in argv[-2:]
+    if initializing and not new_anchor:
         raise VaultError("Creation may have committed but no new anchor was returned. "
                          "Inspect local state before retrying.")
+    if new_anchor and not initializing:
+        raise VaultError("File operation unexpectedly changed the local anchor. "
+                         "Inspect state before retrying.", new_anchor)
     return new_anchor
 
 
