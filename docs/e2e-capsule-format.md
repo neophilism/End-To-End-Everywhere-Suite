@@ -57,7 +57,7 @@ Recipient stanzas contain protocol-specific encapsulated and wrapped-key bytes. 
 
 ## Parser safety
 
-Decoding untrusted Capsules is bounded by configurable limits for recipient count, stanza sizes, protected-header size, payload size, and total encoded size. The decoder rejects:
+Decoding untrusted Capsules is bounded by configurable limits for recipient count, stanza sizes, protected-header size, payload size, and total encoded size. Both `Capsule::validate` and `Capsule::encode` now enforce the **aggregate** serialized envelope budget (including fixed framing, individual stanza length prefixes and every stanza field), not merely per-field limits. The suite identifier is bounded to 128 ASCII bytes before the decoder copies it. These are resource-safety checks, not authentication or profile-conformance claims. The decoder rejects:
 
 - invalid magic;
 - unsupported versions or mandatory flags;
@@ -68,5 +68,7 @@ Decoding untrusted Capsules is bounded by configurable limits for recipient coun
 - integer overflow;
 - truncation; and
 - trailing bytes.
+
+Configured resource budgets may be larger than a wire length prefix can represent. Validation now also rejects recipient-hint lengths beyond u16 and encapsulated/wrapped key lengths beyond u32 (as well as impossible u32 recipient counts/header sizes or u64 payload sizes), before accepting the object. This keeps `validate` and `encode` consistent even with custom application limits.
 
 The parser does not release plaintext. Decryption and authentication happen in later profile-specific layers.

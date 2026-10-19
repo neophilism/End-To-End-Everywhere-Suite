@@ -10,6 +10,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 const MAGIC: [u8; 4] = *b"E2EC";
+const MAX_SUITE_ID_BYTES: usize = 128;
+const WIRE_FIXED_BYTES: usize = 4 + 2 + 2 + 2 + 4 + 4 + 8;
 pub const FORMAT_VERSION: u16 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +109,7 @@ impl std::error::Error for CapsuleError {}
 impl Capsule {
     pub fn validate(&self, limits: CapsuleLimits) -> Result<(), CapsuleError> {
         if self.suite_id.is_empty()
+            || self.suite_id.len() > MAX_SUITE_ID_BYTES
             || !self
                 .suite_id
                 .bytes()
@@ -126,6 +129,16 @@ impl Capsule {
             return Err(CapsuleError::LimitExceeded);
         }
 
+        // Custom resource limits may be wider than the wire-format length
+        // fields. Validation must not claim a Capsule is encodable when
+        // an integer prefix cannot represent a declared field.
+        if u32::try_from(self.recipients.len()).is_err()
+            || u32::try_from(self.protected_header_ciphertext.len()).is_err()
+            || u64::try_from(self.payload_ciphertext.len()).is_err()
+        {
+            return Err(CapsuleError::IntegerOverflow);
+        }
+
         let mut hints = BTreeSet::new();
         for stanza in &self.recipients {
             if stanza.recipient_hint.is_empty() {
@@ -137,6 +150,12 @@ impl Capsule {
             {
                 return Err(CapsuleError::LimitExceeded);
             }
+            if u16::try_from(stanza.recipient_hint.len()).is_err()
+                || u32::try_from(stanza.encapsulated_key.len()).is_err()
+                || u32::try_from(stanza.wrapped_content_key.len()).is_err()
+            {
+                return Err(CapsuleError::IntegerOverflow);
+            }
             if stanza.encapsulated_key.is_empty() {
                 return Err(CapsuleError::EmptyEncapsulatedKey);
             }
@@ -146,6 +165,37 @@ impl Capsule {
             if !hints.insert(stanza.recipient_hint.as_slice()) {
                 return Err(CapsuleError::DuplicateRecipientHint);
             }
+        }
+
+        // validate() must enforce aggregate wire size, not just per-field
+        // limits. Otherwise a caller treating validation as a resource gate
+        // may accept many individually small stanzas whose sum exceeds policy.
+        let mut total = WIRE_FIXED_BYTES;
+        for len in [
+            self.suite_id.len(),
+            self.protected_header_ciphertext.len(),
+            self.payload_ciphertext.len(),
+        ] {
+            total = total
+                .checked_add(len)
+                .ok_or(CapsuleError::IntegerOverflow)?;
+        }
+        for stanza in &self.recipients {
+            for len in [
+                2_usize,
+                stanza.recipient_hint.len(),
+                4,
+                stanza.encapsulated_key.len(),
+                4,
+                stanza.wrapped_content_key.len(),
+            ] {
+                total = total
+                    .checked_add(len)
+                    .ok_or(CapsuleError::IntegerOverflow)?;
+            }
+        }
+        if total > limits.max_total_bytes {
+            return Err(CapsuleError::LimitExceeded);
         }
 
         Ok(())
@@ -206,6 +256,9 @@ impl Capsule {
         }
 
         let suite_len = usize::from(cursor.u16()?);
+        if suite_len > MAX_SUITE_ID_BYTES {
+            return Err(CapsuleError::LimitExceeded);
+        }
         let suite_bytes = cursor.take(suite_len)?;
         let suite_id = std::str::from_utf8(suite_bytes)
             .map_err(|_| CapsuleError::InvalidUtf8)?
@@ -426,6 +479,67 @@ mod tests {
             ..CapsuleLimits::default()
         };
         assert_eq!(capsule().validate(limits), Err(CapsuleError::LimitExceeded));
+    }
+
+    #[test]
+    fn validate_enforces_aggregate_wire_size_not_only_field_limits() {
+        let original = capsule();
+        let ordinary = CapsuleLimits::default();
+        let encoded = original.encode(ordinary).unwrap();
+        assert_eq!(original.validate(ordinary), Ok(()));
+        let tight = CapsuleLimits {
+            max_total_bytes: encoded.len() - 1,
+            ..ordinary
+        };
+        assert_eq!(original.validate(tight), Err(CapsuleError::LimitExceeded));
+        assert_eq!(original.encode(tight), Err(CapsuleError::LimitExceeded));
+        assert_eq!(
+            Capsule::decode(&encoded, tight),
+            Err(CapsuleError::LimitExceeded)
+        );
+
+        let exact = CapsuleLimits {
+            max_total_bytes: encoded.len(),
+            ..ordinary
+        };
+        assert_eq!(original.validate(exact), Ok(()));
+        assert_eq!(original.encode(exact).unwrap(), encoded);
+    }
+
+    #[test]
+    fn unbounded_or_noncanonical_suite_identifier_is_rejected() {
+        let ordinary = CapsuleLimits::default();
+        let mut original = capsule();
+        original.suite_id = "X".repeat(MAX_SUITE_ID_BYTES);
+        assert_eq!(original.validate(ordinary), Ok(()));
+        original.suite_id.push('X');
+        assert_eq!(original.validate(ordinary), Err(CapsuleError::InvalidSuite));
+        assert_eq!(original.encode(ordinary), Err(CapsuleError::InvalidSuite));
+
+        let mut raw = capsule().encode(ordinary).unwrap();
+        raw[8..10].copy_from_slice(&129_u16.to_be_bytes());
+        assert_eq!(
+            Capsule::decode(&raw, ordinary),
+            Err(CapsuleError::LimitExceeded)
+        );
+    }
+
+    #[test]
+    fn configured_field_limit_cannot_override_u16_wire_prefix_capacity() {
+        let ordinary = CapsuleLimits::default();
+        let limits = CapsuleLimits {
+            max_recipient_hint_bytes: usize::from(u16::MAX) + 1,
+            ..ordinary
+        };
+        let mut data = capsule();
+        data.recipients[0].recipient_hint = vec![1_u8; usize::from(u16::MAX) + 1];
+        assert_eq!(data.validate(limits), Err(CapsuleError::IntegerOverflow));
+        assert_eq!(data.encode(limits), Err(CapsuleError::IntegerOverflow));
+
+        data.recipients[0].recipient_hint.pop();
+        assert_eq!(data.validate(limits), Ok(()));
+        let encoded = data.encode(limits).unwrap();
+        assert_eq!(Capsule::decode(&encoded, limits).unwrap(), data);
     }
 
     #[test]
