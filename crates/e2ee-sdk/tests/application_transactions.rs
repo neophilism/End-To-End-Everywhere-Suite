@@ -10,8 +10,11 @@ use std::{
     os::unix::fs::DirBuilderExt,
     path::PathBuf,
     rc::Rc,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static NEXT_SANDBOX: AtomicU64 = AtomicU64::new(0);
 
 struct Sandbox(PathBuf);
 impl Sandbox {
@@ -20,7 +23,9 @@ impl Sandbox {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("e2ee-sdk-{}-{nonce}", std::process::id()));
+        let unique = NEXT_SANDBOX.fetch_add(1, Ordering::Relaxed);
+        let path =
+            std::env::temp_dir().join(format!("e2ee-sdk-{}-{nonce}-{unique}", std::process::id()));
         fs::DirBuilder::new().mode(0o700).create(&path).unwrap();
         Self(path)
     }
@@ -42,6 +47,7 @@ struct AnchorState {
     failure: Failure,
     archive: PathBuf,
     last_archive: Vec<u8>,
+    reads_before_failure: Option<usize>,
 }
 
 // Test double only: process memory is NOT an independent durable anchor store.
@@ -54,6 +60,7 @@ impl TestAnchors {
             failure: Failure::None,
             archive: path.join("state.e2es"),
             last_archive: Vec::new(),
+            reads_before_failure: None,
         })))
     }
     fn floor(&self) -> Option<ArchiveAnchor> {
@@ -65,7 +72,14 @@ impl TestAnchors {
 }
 impl AnchorRepository for TestAnchors {
     fn current(&mut self) -> Result<Option<ArchiveAnchor>, AnchorError> {
-        Ok(self.floor())
+        let mut state = self.0.borrow_mut();
+        if let Some(remaining) = &mut state.reads_before_failure {
+            if *remaining == 0 {
+                return Err(AnchorError::Unavailable);
+            }
+            *remaining -= 1;
+        }
+        Ok(state.value.clone())
     }
     fn advance(
         &mut self,
@@ -390,4 +404,159 @@ fn checkpoint_restore_preserves_keys_receipts_and_trusted_floors_including_an_un
         Err(SdkError::Storage(_))
     ));
     assert_eq!(fs::read(final_path.join("state.e2es")).unwrap(), saved);
+}
+
+#[test]
+fn recovery_and_revocation_supersede_an_already_unlocked_controller() {
+    let root = Sandbox::new();
+    let ap = root.0.join("alice");
+    let bp = root.0.join("bob");
+    let aa = TestAnchors::new(&ap);
+    let ba = TestAnchors::new(&bp);
+    let mut alice = create(&ap, "alice", &aa);
+    let mut bob = create(&bp, "bob", &ba);
+    pair(&mut alice, &mut bob);
+    let backup = alice.checkpoint_backup(3).unwrap();
+    let before_archive = fs::read(ap.join("state.e2es")).unwrap();
+    let recovered_path = root.0.join("recovered-alice");
+    aa.0.borrow_mut().archive = recovered_path.join("state.e2es");
+    let mut recovered = SoftwareClient::restore_backup(
+        PrivateStateStore::create(&recovered_path).unwrap(),
+        aa.clone(),
+        backup.bytes(),
+        password(),
+        SoftwareOptions::default(),
+        0,
+    )
+    .unwrap();
+    recovered.revoke_contact(&id("bob"), 1).unwrap();
+    let floor = aa.floor();
+    assert!(matches!(
+        alice.seal_file(
+            &[id("bob")],
+            "stale-controller",
+            &FileOptions::new("private.bin", "application/octet-stream"),
+            b"must never return a signed delivery under stale trust",
+            4,
+        ),
+        Err(SdkError::Anchor(AnchorError::Conflict))
+    ));
+    assert!(alice.needs_reload());
+    assert!(matches!(alice.contacts(5), Err(SdkError::ReloadRequired)));
+    assert!(matches!(
+        alice.seal_text(&[id("bob")], "stale-controller", "blocked", 6),
+        Err(SdkError::ReloadRequired)
+    ));
+    assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
+    assert_eq!(aa.floor(), floor);
+    assert_eq!(recovered.contacts(2).unwrap()[0].1, ContactStatus::Revoked);
+}
+
+#[test]
+fn missing_changed_and_unavailable_floors_lock_without_archive_writes_or_delivery_release() {
+    let root = Sandbox::new();
+    let ap = root.0.join("alice");
+    let bp = root.0.join("bob");
+    let aa = TestAnchors::new(&ap);
+    let ba = TestAnchors::new(&bp);
+    let mut alice = create(&ap, "alice", &aa);
+    let mut bob = create(&bp, "bob", &ba);
+    pair(&mut alice, &mut bob);
+    let floor = aa.floor().unwrap();
+    let before_archive = fs::read(ap.join("state.e2es")).unwrap();
+    drop(alice);
+    let mut newer = floor.clone();
+    newer.minimum_sequence += 1;
+    for replacement in [None, Some(newer)] {
+        let mut alice = open(&ap, &aa).unwrap();
+        aa.0.borrow_mut().value = replacement;
+        assert!(matches!(
+            alice.contacts(1),
+            Err(SdkError::Anchor(AnchorError::Conflict))
+        ));
+        assert!(alice.needs_reload());
+        aa.0.borrow_mut().value = Some(floor.clone());
+        assert!(matches!(alice.tick(2), Err(SdkError::ReloadRequired)));
+        assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
+    }
+    for attachment in [false, true] {
+        for reads in [0, 1] {
+            let mut alice = open(&ap, &aa).unwrap();
+            aa.0.borrow_mut().reads_before_failure = Some(reads);
+            let result = if attachment {
+                alice.seal_file(
+                    &[id("bob")],
+                    "read-failure",
+                    &FileOptions::new("private.bin", "application/octet-stream"),
+                    b"not released",
+                    1,
+                )
+            } else {
+                alice.seal_text(&[id("bob")], "read-failure", "not released", 1)
+            };
+            assert!(matches!(
+                result,
+                Err(SdkError::Anchor(AnchorError::Unavailable))
+            ));
+            assert!(alice.needs_reload());
+            aa.0.borrow_mut().reads_before_failure = None;
+            assert!(matches!(alice.contacts(2), Err(SdkError::ReloadRequired)));
+            assert_eq!(aa.floor(), Some(floor.clone()));
+            assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
+        }
+    }
+}
+
+struct ChangeDuringUnlock {
+    inner: TestAnchors,
+    reads: usize,
+}
+impl AnchorRepository for ChangeDuringUnlock {
+    fn current(&mut self) -> Result<Option<ArchiveAnchor>, AnchorError> {
+        self.reads += 1;
+        if self.reads == 2 {
+            let mut next = self.inner.floor().unwrap();
+            next.minimum_sequence += 1;
+            self.inner.0.borrow_mut().value = Some(next);
+        }
+        self.inner.current()
+    }
+    fn advance(
+        &mut self,
+        expected: Option<&ArchiveAnchor>,
+        next: &ArchiveAnchor,
+    ) -> Result<(), AnchorError> {
+        self.inner.advance(expected, next)
+    }
+}
+
+#[test]
+fn unlock_rechecks_the_floor_after_authenticating_the_archive() {
+    let root = Sandbox::new();
+    let ap = root.0.join("alice");
+    let aa = TestAnchors::new(&ap);
+    drop(create(&ap, "alice", &aa));
+    let before_archive = fs::read(ap.join("state.e2es")).unwrap();
+    aa.0.borrow_mut().reads_before_failure = Some(1);
+    assert!(matches!(
+        open(&ap, &aa),
+        Err(SdkError::Anchor(AnchorError::Unavailable))
+    ));
+    assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
+    aa.0.borrow_mut().reads_before_failure = None;
+    assert!(open(&ap, &aa).is_ok());
+    assert!(matches!(
+        SoftwareClient::open(
+            PrivateStateStore::open(&ap).unwrap(),
+            ChangeDuringUnlock {
+                inner: aa.clone(),
+                reads: 0,
+            },
+            password(),
+            SoftwareOptions::default(),
+            0,
+        ),
+        Err(SdkError::Anchor(AnchorError::Conflict))
+    ));
+    assert_eq!(fs::read(ap.join("state.e2es")).unwrap(), before_archive);
 }
