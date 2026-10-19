@@ -13,6 +13,8 @@ use e2ee_provenance::{
 };
 use std::fmt;
 
+pub mod relay;
+
 pub const DELIVERY_VERSION: u16 = 1;
 /// Experimental vendor media type; this repository does not claim IANA registration.
 pub const DELIVERY_MEDIA_TYPE: &str = "application/vnd.e2ee.delivery;version=1";
