@@ -9,6 +9,12 @@ binary="$1"
 platform="$2"
 out="$3"
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+python3 - "$script_dir/../desktop/vault.py" <<'PY'
+import pathlib
+import sys
+path = pathlib.Path(sys.argv[1])
+compile(path.read_text(encoding="utf-8"), str(path), "exec")
+PY
 python3 -m unittest discover -s "$script_dir/../desktop" -p "test_*.py" -v
 case "$platform" in
   ""|*[!a-z0-9_-]*) echo "invalid platform identifier" >&2; exit 2 ;;

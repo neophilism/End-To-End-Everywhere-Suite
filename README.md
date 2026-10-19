@@ -46,6 +46,10 @@ The [persistent client archive](docs/client-archives.md) now restores vault,
 endpoint keys and contact trust together, with explicit anchored or password-only policies.
 The [local CLI](docs/cli.md) now creates persistent identities and manages verified
 contacts and unlock credentials with hidden terminal prompts.
+An optional [pre-alpha desktop file vault](desktop/README.md) provides local
+self-encrypted file import and verified plaintext export through that CLI. It
+requires Python 3.10+, Tk, and a trusted local CLI build; the independent anchor
+must be retained separately. This is not a signed installer or production vault.
 
 The shared archive client now offers [durable receive-once receipts](docs/receive-once.md) for signed text and attachments, committed before plaintext is returned. The `receive-text` and `receive-file` CLI commands require an independent archive anchor and persist shared receipt history across invocations.
 
