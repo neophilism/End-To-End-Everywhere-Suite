@@ -26,6 +26,7 @@ mkdir "$tmp/$folder"
 cp "$binary" "$tmp/$folder/e2ee"
 chmod 755 "$tmp/$folder/e2ee"
 cp "$script_dir/../desktop/vault.py" "$tmp/$folder/vault.py"
+cp "$script_dir/../desktop/vault_core.py" "$tmp/$folder/vault_core.py"
 cp "$script_dir/../desktop/README.md" "$tmp/$folder/DESKTOP-README.md"
 cat > "$tmp/$folder/SECURITY-NOTICE.txt" <<'NOTE'
 END-TO-END EVERYWHERE SUITE - UNSIGNED PRE-ALPHA TEST BUILD

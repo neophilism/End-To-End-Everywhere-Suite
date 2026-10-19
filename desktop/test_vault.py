@@ -6,7 +6,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-PATH = pathlib.Path(__file__).with_name("vault.py")
+PATH = pathlib.Path(__file__).with_name("vault_core.py")
 SPEC = importlib.util.spec_from_file_location("vault", PATH)
 vault = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(vault)
