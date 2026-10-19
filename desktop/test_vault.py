@@ -21,7 +21,7 @@ class VaultBoundaryTests(unittest.TestCase):
             output = pathlib.Path(root, "sealed.e2ed")
             argv = vault.command(str(pathlib.Path(sys.executable).resolve()), str(pathlib.Path(root, "state")),
                                  "seal-self-file", "personal-file",
-                                 str(source), str(output))
+                                 str(source), str(output), password_only=True)
             self.assertEqual(argv[-4:], ["seal-self-file", "personal-file",
                                           str(source), str(output)])
             self.assertIn("--password-stdin", argv)
@@ -29,7 +29,7 @@ class VaultBoundaryTests(unittest.TestCase):
             with self.assertRaises(vault.VaultError):
                 vault.command(str(pathlib.Path(sys.executable).resolve()), str(pathlib.Path(root, "state")),
                               "seal-self-file", "personal-file",
-                              str(source), str(output))
+                              str(source), str(output), password_only=True)
             self.assertEqual(output.read_bytes(), b"existing")
 
     def test_invalid_context_and_oversize_import_fail_before_process(self):
@@ -39,11 +39,11 @@ class VaultBoundaryTests(unittest.TestCase):
             source.write_bytes(b"x")
             with self.assertRaises(vault.VaultError):
                 vault.command(str(pathlib.Path(sys.executable).resolve()), root + "/state", "open-self-file",
-                              "bad\ncontext", str(source), root + "/out")
+                              "bad\ncontext", str(source), root + "/out", password_only=True)
             with patch.object(vault, "MAX_FILE_BYTES", 0):
                 with self.assertRaises(vault.VaultError):
                     vault.command(str(pathlib.Path(sys.executable).resolve()), root + "/state", "seal-self-file",
-                                  "personal-file", str(source), root + "/out")
+                                  "personal-file", str(source), root + "/out", password_only=True)
 
     def test_passphrase_is_stdin_only_and_cli_diagnostics_are_not_echoed(self):
         result = subprocess.CompletedProcess([], 1, "", "ANCHOR secret")
@@ -64,9 +64,31 @@ class VaultBoundaryTests(unittest.TestCase):
             with self.assertRaises(vault.VaultError):
                 vault.command(str(link), str(link) + "-state", "init", endpoint="me")
 
+    def test_anchor_is_required_unless_password_only_is_explicit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            source = pathlib.Path(root, "input")
+            source.write_bytes(b"x")
+            args = (str(pathlib.Path(sys.executable).resolve()), root + "/state",
+                    "seal-self-file", "personal-file", str(source), root + "/out")
+            with self.assertRaises(vault.VaultError):
+                vault.command(*args)
+            anchored = vault.command(*args, anchor="a" * 140)
+            self.assertEqual(anchored[4:6], ["--anchor", "a" * 140])
+            with self.assertRaises(vault.VaultError):
+                vault.command(*args, anchor="a" * 139)
+            with self.assertRaises(vault.VaultError):
+                vault.command(*args, anchor="a" * 140, password_only=True)
+
+    def test_created_anchor_is_returned(self):
+        anchor = "a" * 140
+        result = subprocess.CompletedProcess([], 0, "", "ANCHOR " + anchor + "\n")
+        with patch.object(vault.subprocess, "run", return_value=result):
+            self.assertEqual(vault.execute(["e2ee", "init", "me"], "private-passphrase"), anchor)
+
     def test_stdin_identity_creation_uses_one_line(self):
-        with patch.object(vault.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")) as run:
-            vault.execute(["e2ee", "init", "me"], "private-passphrase", initializing=True)
+        with patch.object(vault.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "ANCHOR " + "a" * 140 + "\n")) as run:
+            vault.execute(["e2ee", "init", "me"], "private-passphrase")
             self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
 
     def test_identity_creation_rejects_existing_state(self):
