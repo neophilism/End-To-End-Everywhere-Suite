@@ -53,6 +53,11 @@ class VaultBoundaryTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
             self.assertTrue(run.call_args.kwargs["capture_output"])
 
+    def test_stdin_identity_creation_uses_one_line(self):
+        with patch.object(vault.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")) as run:
+            vault.execute(["e2ee", "init", "me"], "private-passphrase", initializing=True)
+            self.assertEqual(run.call_args.kwargs["input"], "private-passphrase\n")
+
     def test_identity_creation_rejects_existing_state(self):
         import tempfile
         with tempfile.TemporaryDirectory() as root:

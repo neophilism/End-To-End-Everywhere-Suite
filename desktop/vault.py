@@ -47,9 +47,8 @@ def command(binary: str, state: str, action: str, context: str = "",
 def execute(argv: list[str], password: str, initializing: bool = False) -> None:
     if not 12 <= len(password.encode("utf-8")) <= 1024 or "\n" in password or "\r" in password:
         raise VaultError("Passphrase must be 12–1024 bytes without a line break.")
+    # CLI confirms interactively only; stdin mode consumes exactly one line.
     credential = password + "\n"
-    if initializing:
-        credential += password + "\n"
     try:
         result = subprocess.run(argv, input=credential, text=True,
                                 capture_output=True, timeout=180, check=False)
