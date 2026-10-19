@@ -161,8 +161,8 @@ impl Capsule {
             self.payload_ciphertext.len(),
         ] {
             total = total
-                    .checked_add(len)
-                    .ok_or(CapsuleError::IntegerOverflow)?;
+                .checked_add(len)
+                .ok_or(CapsuleError::IntegerOverflow)?;
         }
         for stanza in &self.recipients {
             for len in [
